@@ -97,7 +97,7 @@ def create_app(test_config=None):
         # Without it we'd use a SQLite file, and Render forgets files on every restart.
         raise RuntimeError("Set the DATABASE_URL environment variable on Render (Neon's connection string).")
 
-    from . import auth, cues, db, formatting, scheduler, seed, sending, tick, worker  # noqa: F401 (scheduler registers its jobs)
+    from . import auth, buckets, cues, sending_settings, db, formatting, scheduler, seed, sending, tick, worker  # noqa: F401 (scheduler registers its jobs)
     from .views import audience as audience_views
     from .views import demo, public, settings, stage
     from .views import scripts as script_views
@@ -112,6 +112,8 @@ def create_app(test_config=None):
     public.init_app(app)
     show_views.init_app(app)
     sending.init_app(app)
+    buckets.init_app(app)
+    sending_settings.init_app(app)
     tick.init_app(app)
     worker.init_app(app)
     if worker.nudge not in show_views.nudges:

@@ -9,7 +9,7 @@ reused (sqlite_autoincrement), so an old demo cookie can't open a newer demo.
 """
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, false, true
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, false, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .dates import DEFAULT_ZONE, utcnow
@@ -32,6 +32,15 @@ class Workspace(Base):
     sender_email: Mapped[str] = mapped_column(String(254), default="", server_default="")
     postal_address: Mapped[str] = mapped_column(String(300), default="", server_default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    # Sending (stage 5, buckets.py): which mailer, how fast, how many a day.
+    mailer: Mapped[str] = mapped_column(String(12), default="practice", server_default="practice")
+    send_rate: Mapped[float] = mapped_column(Float, default=5.0, server_default="5")  # emails a second
+    daily_cap: Mapped[int] = mapped_column(Integer, default=300, server_default="300")  # Brevo's free plan
+    # How difficult the practice mail server is, in percent of emails (practice_server.py).
+    practice_busy: Mapped[int] = mapped_column(Integer, default=6, server_default="6")
+    practice_timeout: Mapped[int] = mapped_column(Integer, default=3, server_default="3")
+    practice_bounce: Mapped[int] = mapped_column(Integer, default=3, server_default="3")
+    practice_slow: Mapped[int] = mapped_column(Integer, default=10, server_default="10")
 
     users: Mapped[list["User"]] = relationship(back_populates="workspace", cascade="all, delete-orphan",
                                                passive_deletes=True)
@@ -362,3 +371,60 @@ class PracticeMail(Base):
     headers: Mapped[dict] = mapped_column(JSON, default=dict)
     fate: Mapped[str] = mapped_column(String(12), default="deliver", server_default="deliver")
     accepted_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+# ---------- Stage 5: sending limits and the Safety Curtain ----------
+
+class Bucket(Base):
+    """A token bucket (buckets.py): `tokens` refill at a steady rate up to a
+    capacity; each email takes one. Changed only by compare-and-swap, so two
+    workers can never both spend the last token."""
+    __tablename__ = "buckets"
+
+    key: Mapped[str] = mapped_column(String(120), primary_key=True)
+    workspace_id: Mapped[int | None] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    tokens: Mapped[float] = mapped_column(Float)
+    updated_at: Mapped[datetime] = mapped_column(DateTime)
+    # After a 429 ("too many"), the bucket refills at half speed until this time.
+    slow_until: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class SendCount(Base):
+    """How many emails a mailer took today (the daily cap)."""
+    __tablename__ = "send_counts"
+
+    key: Mapped[str] = mapped_column(String(120), primary_key=True)  # day:<workspace>:<mailer>:<YYYY-MM-DD>
+    workspace_id: Mapped[int | None] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Breaker(Base):
+    """The Safety Curtain of one workspace's mailer (a circuit breaker).
+
+    closed: sending as usual. open: too many failures in a row, so nothing is
+    sent until retry_at. half_open: one test email (the probe) decides whether
+    it closes again or stays open."""
+    __tablename__ = "breakers"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)  # <workspace>:<mailer>
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    mailer: Mapped[str] = mapped_column(String(12))
+    state: Mapped[str] = mapped_column(String(10), default="closed")
+    failures: Mapped[int] = mapped_column(Integer, default=0)
+    opened_at: Mapped[datetime | None] = mapped_column(DateTime)
+    retry_at: Mapped[datetime | None] = mapped_column(DateTime)
+    probe_at: Mapped[datetime | None] = mapped_column(DateTime)
+    last_error: Mapped[str] = mapped_column(String(300), default="")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+
+
+class DomainLimit(Base):
+    """At most per_minute emails a minute to one receiving domain (gmail.com).
+    Big mail services slow down senders who send them too much at once."""
+    __tablename__ = "domain_limits"
+    __table_args__ = (UniqueConstraint("workspace_id", "domain"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"))
+    domain: Mapped[str] = mapped_column(String(120))
+    per_minute: Mapped[int] = mapped_column(Integer)

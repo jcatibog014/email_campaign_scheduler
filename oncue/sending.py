@@ -78,8 +78,9 @@ def subject_for(message, show):
 
 def claim_message(s, message, now):
     """Move the message to On Stage with a new send_token, if nobody else did. Commits."""
-    keep_token = message.status == ON_STAGE  # a send was in flight: reuse its token (idempotency)
-    token = message.send_token if keep_token else secrets.token_hex(16)
+    # Reuse the token while it may have been used (a crash, a timeout); a new one only after a
+    # clear "not taken" answer cleared it. That is what makes a retry safe with an idempotent mailer.
+    token = message.send_token or secrets.token_hex(16)
     result = s.execute(update(Message).where(Message.id == message.id, Message.status == message.status,
                                              Message.updated_at == message.updated_at)
                        .values(status=ON_STAGE, send_token=token, attempts=Message.attempts + 1, updated_at=now)
@@ -128,10 +129,13 @@ def send_message(s, job, now):
     if not claim_message(s, message, now):
         return  # another job has it
     message.mailer = mailer.name
+    outgoing = build(message, show, workspace, contact)
+    outgoing.attempt = message.attempts
+    in_doubt = False  # True when we can't tell whether the service took it
     try:
-        result = mailer.send(s, build(message, show, workspace, contact), now)
+        result = mailer.send(s, outgoing, now)
     except mailers.MailerTimeout as error:
-        result = mailers.TryLater(f"No answer in time: {error}")
+        result, in_doubt = mailers.TryLater(f"No answer in time: {error}"), True
     except OSError as error:
         result = mailers.TryLater(f"Couldn't reach the mail service: {error}")
     for hook in after_send:
@@ -145,7 +149,13 @@ def send_message(s, job, now):
         if result.permanent_bounce:
             audience.suppress(s, workspace.id, message.email, "bounced", now, result.reason)
         finish_if_done(s, message, now)
+    elif in_doubt and not getattr(mailer, "idempotent", False):
+        # It may have gone. Without idempotency a retry could send it twice, so a person decides.
+        set_status(message, UNSURE, now, f"{result.reason} It may or may not have gone. Check before you resend it.")
+        finish_if_done(s, message, now)
     else:
+        if not in_doubt:
+            message.send_token = None  # a clear "not taken": the next try gets a new token
         # Save the Missed Cue now: raising Retry rolls back anything not committed.
         wait = result.retry_after if result.retry_after is not None else queue.backoff(job.attempts)
         message.next_try_at = now + _seconds(wait)

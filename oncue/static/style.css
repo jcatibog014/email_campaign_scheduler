@@ -629,3 +629,6 @@ a.chip:hover { border-color: var(--control-border); }
 .key-waiting::before { background: var(--surface-soft); border: 1px solid var(--control-border); }
 .perf-list { list-style: none; padding: 0; margin: .9rem 0 0; display: grid; gap: .9rem; }
 .perf-list h3 { font-size: .95rem; }
+.dial-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); }
+.dial-grid input { max-width: 8rem; }
+input[type="number"] { max-width: 12rem; }

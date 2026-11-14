@@ -70,8 +70,14 @@ def post(client, url, data=None, **kwargs):
     return client.post(url, data={"csrf_token": CSRF, **(data or {})}, **kwargs)
 
 
+# The practice mail server's dice are seeded by a random send_token, so tests start with every
+# failure rate at 0 (deterministic); a test that wants trouble asks for it.
+CALM = {"practice_busy": 0, "practice_timeout": 0, "practice_bounce": 0, "practice_slow": 0}
+
+
 def make_owner(app, name="Maria Santos", email="maria@example.com", **workspace_fields):
     """The owner and their workspace, straight into the database. Returns (user id, workspace id)."""
+    workspace_fields = {**CALM, **workspace_fields}
     with app.app_context():
         s = db.session()
         workspace = Workspace(name="Maria's Shows", sender_name=name, sender_email=email, **workspace_fields)

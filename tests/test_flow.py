@@ -8,12 +8,14 @@ from oncue import audience, db, queue, scheduler, sending, shows, worker
 from oncue.dates import utcnow
 from oncue.models import Contact, Job, Message, Performance, PracticeMail, Show, Workspace
 
+from .conftest import CALM
+
 T0 = utcnow().replace(second=0, microsecond=0)
 
 
-def setup_show(ctx, people=5, send_at=None, owner=True):
+def setup_show(ctx, people=5, send_at=None, owner=True, **settings):
     workspace = Workspace(name="Teatro", sender_name="Teatro", sender_email="hi@teatro.example",
-                          postal_address="1 Stage Rd")
+                          postal_address="1 Stage Rd", **{**CALM, **settings})
     ctx.add(workspace)
     ctx.flush()
     for index in range(people):

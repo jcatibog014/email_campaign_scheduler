@@ -33,6 +33,7 @@ class Outgoing:
     text: str
     send_token: str
     headers: dict = field(default_factory=dict)
+    attempt: int = 1  # which try this is (the practice server's "flaky" addresses use it)
 
 
 @dataclass

@@ -5,10 +5,10 @@ from datetime import datetime, timedelta
 from flask import Blueprint, abort, flash, g, jsonify, redirect, render_template, request, url_for
 from sqlalchemy import case, func, select
 
-from .. import audience, db, emails, sending, shows
+from .. import audience, buckets, db, emails, limits, mailers, sending, shows
 from ..auth import login_required
 from ..dates import from_zone, utcnow
-from ..models import Performance, Script, Show
+from ..models import Contact, Message, Performance, Script, Show
 from . import stage
 from .scripts import merge_help, preview_choices, preview_contact, preview_response
 
@@ -287,11 +287,56 @@ def performances_of(s, show):
 
 
 def progress(s, show):
-    """The show page's progress panel: each performance (newest first) with its meter."""
+    """The show page's progress panel: each performance (newest first) with its meter,
+    an estimate of when it finishes while it is sending, and the tests sent."""
     found = performances_of(s, show)
     rows = [(perf, sending.meter(sending.counts(s, show.id, perf.id))) for perf in found[:5]]
-    return {"progress_template": "_show_progress.html", "performances": rows,
-            "performance_count": len(found)}
+    estimate = None
+    if rows and show.status == shows.GO:
+        waiting = rows[0][1]["waiting"] + rows[0][1]["retrying"]
+        mailer = mailers.for_workspace(g.workspace).name
+        estimate = buckets.finish_estimate(s, g.workspace, mailer, waiting, utcnow()) if waiting else None
+    tests = s.scalars(select(Message).where(Message.show_id == show.id, Message.is_test.is_(True))
+                      .order_by(Message.created_at.desc()).limit(5)).all()
+    return {"progress_template": "_show_progress.html", "performances": rows, "performance_count": len(found),
+            "estimate": estimate, "tests": tests, "show_sections": ["_show_test.html"],
+            "test_address": g.user.email if not g.user.is_demo else "luna@teatro-luna.example"}
+
+
+TESTS_PER_HOUR = 10
+
+
+@bp.post("/<int:show_id>/test")
+def send_test(show_id):
+    """Send this show to one address, through the same queue, limits and mailer as the real thing."""
+    s = db.session()
+    found = show_or_404(s, show_id)
+    email = audience.clean_email(request.form.get("email"))
+    if problem := audience.email_problem(email):
+        flash(problem, "error")
+        return redirect(url_for("shows.page", show_id=found.id))
+    contact = preview_contact(s) or s.scalar(select(Contact).where(Contact.workspace_id == g.workspace.id)
+                                             .order_by(Contact.id).limit(1))
+    if contact is None:
+        flash("Add someone to your audience first: a test fills the merge fields with a real contact's details.",
+              "error")
+        return redirect(url_for("shows.page", show_id=found.id))
+    moment = utcnow()
+    if not limits.hit(s, f"test:{g.workspace.id}", TESTS_PER_HOUR, 3600, moment):
+        s.commit()
+        flash(f"That's {TESTS_PER_HOUR} tests this hour. Please wait a little.", "error")
+        return redirect(url_for("shows.page", show_id=found.id))
+    message = Message(workspace_id=g.workspace.id, show_id=found.id, contact_id=contact.id, email=email,
+                      is_test=True, due_at=moment, created_at=moment, updated_at=moment)
+    s.add(message)
+    s.flush()
+    sending.enqueue_send(s, message, moment).priority = 1  # tests go before the crowd
+    s.commit()
+    for nudge in nudges:
+        nudge()
+    where = "the practice mail server (see it in Backstage)" if mailers.for_workspace(g.workspace).name == mailers.PRACTICE else email
+    flash(f"A test is on its way to {where}, with {contact.name or contact.email}'s details.")
+    return redirect(url_for("shows.page", show_id=found.id))
 
 
 @bp.get("/<int:show_id>/progress.json")
