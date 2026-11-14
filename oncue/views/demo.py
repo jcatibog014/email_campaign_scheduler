@@ -1,5 +1,5 @@
 """Try Demo: one click, and the visitor has their own sample workspace for 24 hours."""
-from flask import Blueprint, flash, g, redirect, url_for
+from flask import Blueprint, current_app, flash, g, redirect, url_for
 
 from .. import db, limits, seed
 from ..auth import log_in
@@ -18,7 +18,8 @@ def start():
     moment = utcnow()
     seed.purge(s, moment)
     s.commit()
-    if not limits.hit(s, f"demo-ip:{limits.client_ip()}", DEMOS_PER_IP, 3600, moment):
+    # Not while developing on your own PC (--debug): screenshots start many demos in a row.
+    if not current_app.debug and not limits.hit(s, f"demo-ip:{limits.client_ip()}", DEMOS_PER_IP, 3600, moment):
         s.commit()
         flash("That's a lot of demos from your network. Please try again in an hour.", "error")
         return redirect(url_for("auth.login"))

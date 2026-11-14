@@ -56,6 +56,15 @@ JOB = {
     "discarded": Cue("Discarded", "Someone chose not to retry it.", "cut"),
 }
 
+# A contact (shown on the Audience pages).
+CONTACT = {
+    "subscribed": Cue("Subscribed", "Gets your shows.", "go"),
+    "unsubscribed": Cue("Unsubscribed", "Asked to stop getting emails. They won't get any.", "cut"),
+    "do_not_send": Cue("Do Not Send", "On the do-not-send list: an email bounced, they marked one as spam, "
+                                      "or you added them by hand.", "bad"),
+}
+SUPPRESSION_REASONS = {"bounced": "Bounced", "complained": "Marked as spam", "manual": "Added by hand"}
+
 # Words that aren't statuses.
 WORDS = {
     "safety_curtain": Cue("Safety Curtain", "Sending stopped by itself after many failures in a row. "
@@ -72,10 +81,15 @@ def message_cue(status):
     return MESSAGE.get(status) or Cue(status.replace("_", " ").title(), "", "rehearsal")
 
 
+def contact_cue(status):
+    return CONTACT.get(status) or Cue(status.title(), "", "rehearsal")
+
+
 def job_cue(status):
     return JOB.get(status) or Cue(status.title(), "", "rehearsal")
 
 
 def init_app(app):
     app.jinja_env.globals.update(show_cue=show_cue, message_cue=message_cue, job_cue=job_cue,
+                                 contact_cue=contact_cue, SUPPRESSION_REASONS=SUPPRESSION_REASONS,
                                  SHOW_CUES=SHOW, MESSAGE_CUES=MESSAGE, CUE_WORDS=WORDS)

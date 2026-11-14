@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, csrf %}
+{% block title %}Import CSV - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Audience') }}
+  {% include "_audience_tabs.html" %}
+  {% include "_import_steps.html" %}
+  <form method="post" enctype="multipart/form-data" class="card stack form-card">
+    {{ csrf() }}
+    <h2>Choose a CSV File</h2>
+    <p class="muted">The first row must have the column names. One column must be the email address; the others can be names, a time zone, tags, or anything you like (each becomes a custom field). At most 20,000 rows and 5 MB.</p>
+    <label class="field{% if error %} has-error{% endif %}"><span class="field-label">CSV file</span>
+      <input type="file" name="file" accept=".csv,text/csv" required></label>
+    {% if error %}<p class="field-error" role="alert">{{ error }}</p>{% endif %}
+    <div class="form-actions"><button class="button" type="submit">Upload</button></div>
+  </form>
+{% endblock %}

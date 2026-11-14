@@ -44,7 +44,7 @@ def test_signed_in_pages_have_the_curtain_menu_and_the_valance(owner):
 
 
 def test_every_cue_word_has_a_plain_note():
-    for table in (cues.SHOW, cues.MESSAGE, cues.JOB, cues.WORDS):
+    for table in (cues.SHOW, cues.MESSAGE, cues.JOB, cues.CONTACT, cues.WORDS):
         for key, cue in table.items():
             assert cue.note.endswith((".", ")")), key
             assert f".cue-{cue.tone}" in CSS or cue.tone == "rehearsal", key

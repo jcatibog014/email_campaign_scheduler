@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty, csrf, field %}
+{% block title %}Do Not Send - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Audience') }}
+  {% include "_audience_tabs.html" %}
+  <div class="split">
+    <section>
+      {% if rows %}
+        <div class="table-wrap">
+          <table class="fit-table">
+            <thead><tr><th>Address</th><th>Why</th><th>Since</th><th><span class="visually-hidden">Remove</span></th></tr></thead>
+            <tbody>{% for row in rows %}
+              <tr>
+                <td>{{ row.email }}{% if row.note %}<div class="muted small">{{ row.note }}</div>{% endif %}</td>
+                <td data-label="Why">{{ SUPPRESSION_REASONS.get(row.reason, row.reason) }}</td>
+                <td data-label="Since" class="nowrap">{{ row.created_at|short_date }}</td>
+                <td class="num"><form method="post" action="{{ url_for('audience.remove_suppression', row_id=row.id) }}"
+                      data-confirm="{{ 'This address bounced or complained. Emails to it may bounce again and hurt your sending. Remove it anyway?' if row.reason != 'manual' else 'Let ' ~ row.email ~ ' get your emails again?' }}">
+                  {{ csrf() }}<button class="link-button small" type="submit">Remove</button></form></td>
+              </tr>
+            {% endfor %}</tbody>
+          </table>
+        </div>
+      {% else %}
+        {% call empty('Nobody Here') %}<p>Addresses that bounce or mark an email as spam come here by themselves, so you never email them again.</p>{% endcall %}
+      {% endif %}
+    </section>
+    <aside class="card stack-small">
+      <h2>Block an Address</h2>
+      <p class="muted small">Nothing is ever sent to an address on this list, whatever list or segment it is on.</p>
+      <form method="post" class="stack-small">
+        {{ csrf() }}
+        {{ field('email', 'Email', email, error, type='email', attrs='required') }}
+        {{ field('note', 'Note', '', hint='Optional', attrs='maxlength="300"') }}
+        <div class="form-actions"><button class="button" type="submit">Add to the list</button></div>
+      </form>
+    </aside>
+  </div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head %}
+{% block title %}Import Done - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Audience') }}
+  {% include "_audience_tabs.html" %}
+  {% include "_import_steps.html" %}
+  <section class="card stack">
+    <h2>{{ imp.filename }} Is In</h2>
+    {% include "_import_numbers.html" %}
+    <div class="form-actions start">
+      <a class="button button-quiet" href="{{ url_for('audience.import_upload') }}">Import another file</a>
+      <a class="button" href="{{ url_for('audience.list_page', list_id=chosen_list.id) if chosen_list else url_for('audience.contacts') }}">See {{ chosen_list.name if chosen_list else 'your audience' }}</a>
+    </div>
+  </section>
+{% endblock %}

@@ -5,6 +5,7 @@ audience. Its contacts have made-up addresses, and a demo workspace can only
 send to the practice mail server (mailers.py), so nothing a demo does ever
 reaches a real inbox. A demo is deleted 24 hours after it starts.
 """
+import random
 import secrets
 from datetime import timedelta
 
@@ -31,6 +32,100 @@ def purge(s, moment):
     return len(gone)
 
 
+FIRST = ["Ana", "Ben", "Carla", "Dante", "Elena", "Franco", "Gemma", "Hector", "Isabel", "Jomar", "Kristine",
+         "Leo", "Mika", "Nestor", "Olivia", "Paolo", "Queenie", "Ramon", "Sofia", "Tomas", "Ursula", "Vince",
+         "Wena", "Xander", "Yasmin", "Zeny", "Andres", "Bea", "Carlo", "Divina"]
+LAST = ["Santos", "Reyes", "Cruz", "Bautista", "Garcia", "Mendoza", "Torres", "Villanueva", "Ramos", "Aquino",
+        "Castillo", "Navarro", "Dela Cruz", "Flores", "Lim", "Tan", "Ocampo", "Rivera", "Salazar", "Pascual"]
+DOMAINS = ["gmail.example", "gmail.example", "yahoo.example", "outlook.example", "icloud.example"]
+CITIES = ["Quezon City", "Quezon City", "Manila", "Makati", "Pasig", "Cebu", "Davao", "Baguio", "Iloilo"]
+# Fans abroad (many Filipinos work overseas): they get shows at 9:00 AM their own time.
+ABROAD = ["Asia/Tokyo", "Asia/Singapore", "Asia/Dubai", "Europe/London", "America/Los_Angeles",
+          "Australia/Sydney", "America/Toronto"]
+CONTACTS = 120
+
+
+def seed_audience(s, workspace, moment):
+    """Teatro Luna's audience: made-up people on made-up domains (.example never
+    receives mail), so even a mistake could never email a real person."""
+    from . import audience
+    from .models import Contact, ContactList, Segment
+    rng = random.Random(2026)  # the same audience in every demo (and in the README's pictures)
+    people = []
+    for index in range(CONTACTS):
+        # Shift the surname every round of first names, so no name comes twice.
+        first, last = FIRST[index % len(FIRST)], LAST[(index * 7 + index // len(FIRST)) % len(LAST)]
+        local = f"{first}.{last}".lower().replace(" ", "")
+        if index in (11, 47):
+            local = f"flaky.{local}"  # the practice mail server says "try later" twice first
+        if index == 29:
+            local = f"slow.{local}"
+        email = f"{local}{index if index >= len(FIRST) else ''}@{DOMAINS[index % len(DOMAINS)]}"
+        days_ago = rng.randint(0, 400) if index > 6 else rng.randint(0, 20)
+        plan = rng.choice(["Season pass", "Season pass", "Single tickets", "Single tickets", "Student pass"])
+        contact = Contact(workspace_id=workspace.id, email=email, first_name=first, last_name=last,
+                          fields={"city": rng.choice(CITIES), "plan": plan},
+                          time_zone=rng.choice(ABROAD) if index % 9 == 4 else None,
+                          consent_at=moment - timedelta(days=days_ago),
+                          consent_note="Signed up at the box office" if index % 3 else "Website sign-up form",
+                          created_at=moment - timedelta(days=days_ago), updated_at=moment)
+        s.add(contact)
+        people.append((contact, plan))
+    s.flush()
+    tags = {"Season pass": ["member"], "Student pass": ["student"], "Single tickets": []}
+    for index, (contact, plan) in enumerate(people):
+        extra = (["donor"] if index % 11 == 3 else []) + (["volunteer"] if index % 13 == 5 else []) + \
+                (["press"] if index in (8, 64) else [])
+        audience.set_tags(contact, tags[plan] + extra)
+    lists = {
+        "Season Subscribers": ("Everyone with a season pass: opening nights, schedules, member perks.", True),
+        "Workshop News": ("Acting and playwriting workshops for all ages.", True),
+        "Volunteers": ("Ushers, ticket-takers and set builders.", False),
+        "Press and Partners": ("Reviewers, schools and sponsors.", False),
+    }
+    made = {}
+    for name, (description, topic) in lists.items():
+        made[name] = ContactList(workspace_id=workspace.id, name=name, description=description, is_topic=topic,
+                                 created_at=moment - timedelta(days=400))
+        s.add(made[name])
+    s.flush()
+    members = {
+        "Season Subscribers": [c.id for c, plan in people if plan == "Season pass"],
+        "Workshop News": [c.id for i, (c, plan) in enumerate(people) if plan == "Student pass" or i % 4 == 1],
+        "Volunteers": [c.id for c in people_with(people, "volunteer")],
+        "Press and Partners": [c.id for c in people_with(people, "press")] + [people[3][0].id],
+    }
+    for name, ids in members.items():
+        audience.add_to_list(s, made[name].id, ids, moment - timedelta(days=30))
+    s.add_all([
+        Segment(workspace_id=workspace.id, name="Fans Abroad", match="all",
+                rules=[{"field": "time_zone", "op": "is_set", "value": ""}], created_at=moment),
+        Segment(workspace_id=workspace.id, name="Cebu and Davao", match="any",
+                rules=[{"field": "field:city", "op": "is", "value": "Cebu"},
+                       {"field": "field:city", "op": "is", "value": "Davao"}], created_at=moment),
+        Segment(workspace_id=workspace.id, name="New This Month", match="all",
+                rules=[{"field": "added", "op": "within", "value": "30"}], created_at=moment),
+        Segment(workspace_id=workspace.id, name="Students in Metro Manila", match="all",
+                rules=[{"field": "tag", "op": "has", "value": "student"},
+                       {"field": "field:city", "op": "is_not", "value": "Cebu"},
+                       {"field": "field:city", "op": "is_not", "value": "Davao"}], created_at=moment),
+    ])
+    # Three who unsubscribed, and the do-not-send list.
+    for contact, _plan in people[100:103]:
+        audience.unsubscribe(s, contact, moment - timedelta(days=12))
+    audience.suppress(s, workspace.id, people[37][0].email, "bounced", moment - timedelta(days=20),
+                      "The mailbox doesn't exist (550 5.1.1).")
+    audience.suppress(s, workspace.id, people[58][0].email, "complained", moment - timedelta(days=9),
+                      "Marked the March newsletter as spam.")
+    audience.suppress(s, workspace.id, "old.boxoffice@teatro-luna.example", "manual", moment - timedelta(days=60),
+                      "Our old box office address. Nobody reads it.")
+    return people
+
+
+def people_with(people, tag):
+    return [contact for contact, _plan in people if tag in contact.tag_names]
+
+
 def build(s, moment):
     """A new demo workspace with its sample content. Returns the demo user."""
     workspace = Workspace(name="Teatro Luna", is_demo=True, demo_expires_at=moment + DEMO_LIFETIME,
@@ -42,6 +137,7 @@ def build(s, moment):
     user = auth.create_user(s, workspace, DEMO_NAME, f"demo-{workspace.id}-{secrets.token_hex(4)}@demo.invalid",
                             secrets.token_urlsafe(16), is_demo=True,
                             session_version=secrets.randbelow(10**9) + 2, created_at=moment)
+    seed_audience(s, workspace, moment)
     return user
 
 

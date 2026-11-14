@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, csrf, cue %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ contact.name or contact.email }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% call page_head(contact.name or contact.email, back=url_for('audience.contacts'), back_label='Audience') %}
+    <a class="button button-quiet" href="{{ url_for('audience.edit_contact', contact_id=contact.id) }}">{{ icon('pencil', 16) }} Edit</a>
+  {% endcall %}
+  <div class="split">
+    <div class="stack">
+      <section class="card">
+        <div class="card-head"><h2>Details</h2>{{ cue(contact_cue(status)) }}</div>
+        <dl class="facts">
+          <dt>Email</dt><dd>{{ contact.email }}</dd>
+          <dt>Name</dt><dd>{{ contact.name or '–' }}</dd>
+          <dt>Time zone</dt><dd>{{ (contact.time_zone or g.workspace.time_zone).replace('_', ' ') }}{% if not contact.time_zone %} <span class="muted">(the workspace's)</span>{% endif %}</dd>
+          <dt>Tags</dt><dd>{% for tag in contact.tag_names %}<a class="chip" href="{{ url_for('audience.contacts', tag=tag) }}">{{ tag }}</a>{% else %}–{% endfor %}</dd>
+          {% for key, value in (contact.fields or {})|dictsort %}<dt>{{ key.replace('_', ' ')|capitalize }}</dt><dd>{{ value }}</dd>{% endfor %}
+          <dt>Agreed</dt><dd>{% if contact.consent_at %}{{ contact.consent_at|nice_date }} <span class="muted">({{ contact.consent_note }})</span>{% else %}–{% endif %}</dd>
+          {% if contact.unsubscribed_at %}<dt>Unsubscribed</dt><dd>{{ contact.unsubscribed_at|nice_datetime }}</dd>{% endif %}
+        </dl>
+        <p class="muted small">{{ contact_cue(status).note }}</p>
+      </section>
+      {% block contact_history %}{% if history_template is defined %}{% include history_template %}{% endif %}{% endblock %}
+    </div>
+    <div class="stack">
+      <section class="card">
+        <h2>Lists</h2>
+        {% if member_of %}
+          <ul class="plain-list">
+            {% for found in member_of %}
+              <li class="list-row"><a class="grow" href="{{ url_for('audience.list_page', list_id=found.id) }}">{{ found.name }}</a>
+                <form method="post" action="{{ url_for('audience.contact_lists', contact_id=contact.id) }}">
+                  {{ csrf() }}<input type="hidden" name="list_id" value="{{ found.id }}"><input type="hidden" name="action" value="remove">
+                  <button class="link-button small" type="submit">Take off</button>
+                </form></li>
+            {% endfor %}
+          </ul>
+        {% else %}<p class="muted">Not on any list.</p>{% endif %}
+        {% if other_lists %}
+          <form class="form-row top-gap" method="post" action="{{ url_for('audience.contact_lists', contact_id=contact.id) }}">
+            {{ csrf() }}
+            <label class="field"><span class="visually-hidden">List</span>
+              <select name="list_id">{% for found in other_lists %}<option value="{{ found.id }}">{{ found.name }}</option>{% endfor %}</select></label>
+            <button class="button button-quiet" type="submit">Add to list</button>
+          </form>
+        {% endif %}
+      </section>
+      <section class="card stack-small">
+        <h2>Stop Emails</h2>
+        {% if status == 'subscribed' %}
+          <p class="muted small">If they asked you in person or by phone. They can subscribe again from any email's unsubscribe link.</p>
+          <form method="post" action="{{ url_for('audience.contact_status', contact_id=contact.id) }}">
+            {{ csrf() }}<input type="hidden" name="action" value="unsubscribe">
+            <button class="button button-quiet" type="submit">Unsubscribe them</button>
+          </form>
+        {% endif %}
+        {% if status != 'do_not_send' %}
+          <p class="muted small">The do-not-send list blocks the address for good, even if they are added again.</p>
+          <form method="post" action="{{ url_for('audience.contact_status', contact_id=contact.id) }}">
+            {{ csrf() }}<input type="hidden" name="action" value="suppress">
+            <button class="button button-quiet" type="submit">Add to do-not-send</button>
+          </form>
+        {% else %}
+          <p class="muted small">This address is on the <a href="{{ url_for('audience.do_not_send') }}">do-not-send list</a>.</p>
+        {% endif %}
+        <hr>
+        <form method="post" action="{{ url_for('audience.delete_contact', contact_id=contact.id) }}" data-confirm="Delete {{ contact.email }}? Their sending history goes too.">
+          {{ csrf() }}
+          <button class="button button-danger" type="submit">{{ icon('trash', 16) }} Delete contact</button>
+        </form>
+      </section>
+    </div>
+  </div>
+{% endblock %}

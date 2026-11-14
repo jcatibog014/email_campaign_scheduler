@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty, cue %}
+{% from "_icons.html" import icon %}
+{% block title %}Audience - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% call page_head('Audience') %}
+    <a class="button" href="{{ url_for('audience.new_contact') }}">{{ icon('plus', 16) }} Add contact</a>
+  {% endcall %}
+  {% include "_audience_tabs.html" %}
+
+  <form class="search-row" method="get" action="{{ url_for('audience.contacts') }}" role="search">
+    <label class="search-box">
+      <span class="visually-hidden">Search contacts</span>
+      {{ icon('search', 16) }}
+      <input type="search" name="q" value="{{ q }}" placeholder="Search by name or email">
+    </label>
+    {# One Filter menu beside the search box: a <details> that opens without JavaScript. #}
+    <details class="filter-menu" data-popover>
+      <summary class="button button-quiet">{{ icon('filter', 16) }} Filter{% if filters %} <span class="badge">{{ filters }}</span>{% endif %}</summary>
+      <div class="filter-panel stack-small">
+        <label class="field"><span class="field-label">List</span>
+          <select name="list">
+            <option value="">Any list</option>
+            {% for found, members in all_lists %}<option value="{{ found.id }}"{% if found.id == list_id %} selected{% endif %}>{{ found.name }} ({{ members|number }})</option>{% endfor %}
+          </select>
+        </label>
+        <label class="field"><span class="field-label">Tag</span>
+          <select name="tag">
+            <option value="">Any tag</option>
+            {% for name, count in all_tags %}<option value="{{ name }}"{% if name == tag %} selected{% endif %}>{{ name }} ({{ count|number }})</option>{% endfor %}
+          </select>
+        </label>
+        <label class="field"><span class="field-label">Status</span>
+          <select name="status">
+            <option value="">Any status</option>
+            {% for key in ('subscribed', 'unsubscribed', 'do_not_send') %}<option value="{{ key }}"{% if key == status %} selected{% endif %}>{{ contact_cue(key).label }}</option>{% endfor %}
+          </select>
+        </label>
+        <div class="form-actions">
+          <a class="button button-quiet button-small" href="{{ url_for('audience.contacts', q=q or none) }}">Clear</a>
+          <button class="button button-small" type="submit">Apply</button>
+        </div>
+      </div>
+    </details>
+    <button class="button" type="submit">Search</button>
+  </form>
+
+  {% if rows %}
+    <div class="table-wrap">
+      <table class="fit-table">
+        <thead><tr><th>Contact</th><th>Tags</th><th>Status</th><th>Added</th></tr></thead>
+        <tbody>
+          {% for contact, suppressed in rows %}
+            <tr>
+              <td><a class="row-link" href="{{ url_for('audience.contact', contact_id=contact.id) }}">{{ contact.name or contact.email }}</a>
+                {% if contact.name %}<div class="muted small">{{ contact.email }}</div>{% endif %}</td>
+              <td>{% for tag in contact.tag_names %}<span class="chip">{{ tag }}</span>{% else %}<span class="muted dash">&ndash;</span>{% endfor %}</td>
+              <td>{{ cue(contact_cue('do_not_send' if suppressed else contact.status)) }}</td>
+              <td data-label="Added" class="nowrap">{{ contact.created_at|short_date }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% set last = page * page_size %}
+    <div class="pager">
+      <span class="muted small">Showing {{ (page - 1) * page_size + 1 }}&ndash;{{ [last, total]|min }} of {{ total|number }}</span>
+      {% if page > 1 %}<a class="button button-quiet button-small" href="{{ url_for('audience.contacts', q=q or none, list=list_id, tag=tag or none, status=status or none, page=page - 1) }}">Previous</a>{% endif %}
+      {% if last < total %}<a class="button button-quiet button-small" href="{{ url_for('audience.contacts', q=q or none, list=list_id, tag=tag or none, status=status or none, page=page + 1) }}">Next</a>{% endif %}
+    </div>
+  {% elif q or filters %}
+    {% call empty('Nobody Matches') %}<p>Try other words, or clear the filters.</p>
+      <a class="button button-quiet" href="{{ url_for('audience.contacts') }}">Show everyone</a>{% endcall %}
+  {% else %}
+    {% call empty('An Empty House') %}<p>Add the people who agreed to hear from you, one by one or from a CSV file.</p>
+      <a class="button button-quiet" href="{{ url_for('audience.import_upload') }}">Import CSV</a>
+      <a class="button" href="{{ url_for('audience.new_contact') }}">Add contact</a>{% endcall %}
+  {% endif %}
+{% endblock %}

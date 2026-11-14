@@ -313,7 +313,9 @@ html:not(.js) .js-only { display: none !important; }
 .avatar { display: inline-grid; place-items: center; flex: 0 0 auto; width: 2.1rem; height: 2.1rem; border-radius: 50%; background: var(--gold); color: #24170a; font: 700 .95rem/1 var(--font-body); }
 
 @media (min-width: 56rem) {
-  .sidebar { position: sticky; top: 0; align-self: flex-start; flex: 0 0 16.5rem; height: 100vh; display: flex; flex-direction: column; padding: 1.3rem 1rem 1rem; overflow-y: auto; box-shadow: inset -6px 0 10px rgb(0 0 0 / .35); }
+  /* The curtain runs the whole height of the page; what's on it stays in view while you scroll. */
+  .sidebar { flex: 0 0 16.5rem; box-shadow: inset -6px 0 10px rgb(0 0 0 / .35); }
+  .sidebar-inner { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; padding: 1.3rem 1rem 1rem; overflow-y: auto; }
   .sidebar-menu { display: flex; flex-direction: column; flex: 1 1 auto; }
   .menu-button { display: none !important; }
 }
@@ -409,7 +411,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px
 .form-actions.start { justify-content: flex-start; }
 .check { display: inline-flex; align-items: flex-start; gap: .55rem; cursor: pointer; }
 .check input { width: 1.1rem; height: 1.1rem; margin: .2rem 0 0; accent-color: var(--accent); flex: 0 0 auto; }
-.choices { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; border: 0; padding: 0; margin: 0; }
+.choices { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; border: 0; padding: 0; }
 .choices legend { font-weight: 600; font-size: .92rem; margin-bottom: .4rem; padding: 0; }
 fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 
@@ -509,3 +511,65 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent-soft) 45%, transpar
 .banner-hold { background: var(--cue-hold-bg); color: var(--cue-hold-ink); border-color: color-mix(in srgb, var(--cue-hold-lamp) 40%, transparent); }
 .banner strong { display: block; }
 .banner form { margin: 0; }
+
+/* ---------- Search row with one Filter menu ---------- */
+
+.search-row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-bottom: 1.1rem; }
+.search-box { position: relative; flex: 1 1 18rem; max-width: 40rem; display: block; }
+.search-box svg { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.search-box input { padding-left: 2.2rem; max-width: none; }
+.filter-menu { position: relative; }
+.filter-menu > summary { list-style: none; }
+.filter-menu > summary::-webkit-details-marker { display: none; }
+.filter-panel { position: absolute; z-index: 25; top: calc(100% + .4rem); right: 0; width: min(20rem, 85vw); background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1rem; }
+.badge { display: inline-grid; place-items: center; min-width: 1.3rem; height: 1.3rem; border-radius: 99px; background: var(--accent); color: var(--on-accent); font: 700 .72rem/1 var(--font-body); padding: 0 .3rem; }
+@media (max-width: 40rem) { .filter-panel { left: 0; right: auto; } }
+
+/* Tags as little labels. */
+.chip { display: inline-block; margin: .1rem .25rem .1rem 0; padding: .05rem .5rem; border-radius: 99px; border: 1px solid var(--rule); background: var(--surface-soft); color: var(--ink); font-size: .8rem; text-decoration: none; white-space: nowrap; }
+a.chip:hover { border-color: var(--control-border); }
+
+/* Facts: label beside value. */
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: .45rem 1.2rem; margin: 0 0 .8rem; }
+.facts dt { color: var(--muted); font-weight: 600; font-size: .9rem; }
+.facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+.card-link { display: block; color: inherit; text-decoration: none; transition: border-color .15s ease, transform .15s ease; }
+.card-link:hover { border-color: var(--control-border); transform: translateY(-2px); color: inherit; }
+.card-link h2 { font-size: 1.15rem; }
+.card-foot { margin-top: .8rem; font-weight: 600; font-size: .92rem; }
+.top-gap { margin-top: 1rem; }
+.form-card { max-width: 52rem; }
+.pair-row > .field { flex: 1 1 12rem; }
+.rule-row { display: grid; grid-template-columns: minmax(9rem, 1fr) minmax(9rem, 1fr) minmax(10rem, 1.4fr); gap: .5rem; }
+@media (max-width: 40rem) { .rule-row { grid-template-columns: 1fr 1fr; } .rule-row > :last-child { grid-column: 1 / -1; } }
+.rule-list { list-style: none; padding: 0; margin: .5rem 0 0; display: grid; gap: .3rem; }
+.rule-list .joiner { font: 700 .75rem/1 var(--font-label); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.preview-box { padding: .8rem 1rem; border-radius: var(--radius); background: var(--accent-soft); }
+.notes { margin: 0; padding-left: 1.2rem; color: var(--muted); display: grid; gap: .3rem; }
+
+/* Import steps: numbered stops along the stage edge. */
+.steps { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; padding: 0; margin: 0 0 1.2rem; }
+.steps li { display: inline-flex; align-items: center; gap: .45rem; color: var(--muted); font-weight: 600; font-size: .92rem; }
+.step-number { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; border: 2px solid var(--control-border); font-size: .8rem; }
+.steps .is-here { color: var(--ink); }
+.steps .is-here .step-number { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.steps .is-done .step-number { background: var(--surface-soft); border-color: var(--cue-done-lamp); }
+
+/* On phones, table rows become small cards that fit (no sideways scroll): the first cell
+   takes the whole width, the others share one line that wraps. A cell keeps a small label
+   only when it has a data-label (a number or a date needs one; a name or a stamp doesn't). */
+@media (max-width: 40rem) {
+  .fit-table thead { display: none; }
+  .fit-table, .fit-table tbody { display: block; width: 100%; }
+  .fit-table tr { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .9rem; padding: .7rem .8rem; border-bottom: 1px solid var(--rule); }
+  .fit-table td { display: block; border: 0; padding: 0; text-align: left; }
+  .fit-table td:first-child { flex: 1 1 100%; }
+  .fit-table td[data-label]:not(:first-child)::before { content: attr(data-label) " "; font: 700 .7rem/1 var(--font-label); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .fit-table td.num { text-align: left; margin-left: auto; }
+  .fit-table .dash { display: none; }
+}
+
+/* The unsubscribe page: a lit stage, no menu. */
+.public-stage { min-height: 100vh; }
+.public-stage .card { width: min(100%, 32rem); }

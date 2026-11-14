@@ -9,6 +9,7 @@
   {% endif %}
 {% endmacro %}
 <aside class="sidebar velvet">
+ <div class="sidebar-inner">
   <div class="sidebar-top">
     <a class="logo" href="{{ url_for('stage.home') }}">{{ logo(36) }} {{ APP_NAME }}</a>
     {% if g.user.is_demo %}<span class="demo-tag" title="A sandbox: every email goes to the practice mail server.">Demo</span>{% endif %}
@@ -47,4 +48,5 @@
       </details>
     </div>
   </div>
+ </div>
 </aside>

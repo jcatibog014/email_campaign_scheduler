@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty %}
+{% from "_icons.html" import icon %}
+{% block title %}Lists - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% call page_head('Audience') %}
+    <a class="button" href="{{ url_for('audience.new_list') }}">{{ icon('plus', 16) }} New list</a>
+  {% endcall %}
+  {% include "_audience_tabs.html" %}
+  {% if lists %}
+    <div class="grid grid-3">
+      {% for found, members in lists %}
+        <a class="card card-link" href="{{ url_for('audience.list_page', list_id=found.id) }}">
+          <div class="card-head"><h2>{{ found.name }}</h2>{% if found.is_topic %}<span class="tape tape-gold" title="Shown on the unsubscribe page, so people can leave just this list.">Topic</span>{% endif %}</div>
+          <p class="muted">{{ found.description or 'No description.' }}</p>
+          <p class="card-foot">{{ plural(members, 'person', 'people') }}</p>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    {% call empty('No Lists Yet') %}<p>A list groups people you choose, like season subscribers or volunteers. A show can go to one list.</p>
+      <a class="button" href="{{ url_for('audience.new_list') }}">New list</a>{% endcall %}
+  {% endif %}
+{% endblock %}

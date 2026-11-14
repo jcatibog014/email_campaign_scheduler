@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, csrf %}
+{% block title %}Map Columns - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Audience') }}
+  {% include "_audience_tabs.html" %}
+  {% include "_import_steps.html" %}
+  <form method="post" class="card stack">
+    {{ csrf() }}
+    <h2>What Is in Each Column?</h2>
+    <p class="muted">{{ imp.filename }} has {{ plural(imp.rows|length, 'row') }}. We made a first guess; change anything that's wrong.</p>
+    {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+    <div class="table-wrap">
+      <table class="fit-table">
+        <thead><tr><th>Column</th><th>First rows</th><th>Import as</th></tr></thead>
+        <tbody>{% for name in imp.header %}{% set index = loop.index0 %}
+          <tr>
+            <td><strong>{{ name or '(no name)' }}</strong></td>
+            <td data-label="First rows" class="muted small">{{ samples[index]|reject('equalto', '')|join(', ') or '–' }}</td>
+            <td><label class="field"><span class="visually-hidden">Import {{ name }} as</span>
+              <select name="column_{{ index }}">{% for key, label in targets %}<option value="{{ key }}"{% if imp.mapping.get(index|string) == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label></td>
+          </tr>
+        {% endfor %}</tbody>
+      </table>
+    </div>
+    <label class="field"><span class="field-label">Put everyone in this file on a list <span class="hint">Optional</span></span>
+      <select name="list_id"><option value="">No list</option>{% for found, members in all_lists %}<option value="{{ found.id }}"{% if found.id == imp.list_id %} selected{% endif %}>{{ found.name }}</option>{% endfor %}</select></label>
+    <label class="check"><input type="checkbox" name="consent" value="yes">
+      <span>Everyone in this file agreed to get emails from {{ g.workspace.sender_name or 'me' }}.<br><span class="muted small">Emailing people who didn't agree is spam, and mail services block senders who do it.</span></span></label>
+    <div class="form-actions">
+      <a class="button button-quiet" href="{{ url_for('audience.import_upload') }}">Start again</a>
+      <button class="button" type="submit">Review</button>
+    </div>
+  </form>
+{% endblock %}

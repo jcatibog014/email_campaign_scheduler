@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty, csrf, cue %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ found.name }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% call page_head(found.name, back=url_for('audience.lists'), back_label='Lists') %}
+    <a class="button button-quiet" href="{{ url_for('audience.edit_list', list_id=found.id) }}">{{ icon('pencil', 16) }} Edit</a>
+  {% endcall %}
+  <div class="stats">
+    <div class="stat"><p class="stat-label">On the List</p><p class="stat-value">{{ total|number }}</p></div>
+    <div class="stat"><p class="stat-label">Can Get Emails</p><p class="stat-value">{{ reachable|number }}</p><p class="stat-note">Subscribed and not on the do-not-send list</p></div>
+    <div class="stat"><p class="stat-label">Topic</p><p class="stat-value">{{ 'Yes' if found.is_topic else 'No' }}</p><p class="stat-note">{{ 'People can leave just this list.' if found.is_topic else 'Not shown on the unsubscribe page.' }}</p></div>
+  </div>
+  {% if found.description %}<p class="top-gap">{{ found.description }}</p>{% endif %}
+
+  <div class="split top-gap">
+    <section>
+      {% if members %}
+        <div class="table-wrap">
+          <table class="fit-table">
+            <thead><tr><th>Contact</th><th>Status</th><th><span class="visually-hidden">Take off</span></th></tr></thead>
+            <tbody>
+              {% for contact, suppressed in members %}
+                <tr>
+                  <td><a class="row-link" href="{{ url_for('audience.contact', contact_id=contact.id) }}">{{ contact.name or contact.email }}</a>{% if contact.name %}<div class="muted small">{{ contact.email }}</div>{% endif %}</td>
+                  <td>{{ cue(contact_cue('do_not_send' if suppressed else contact.status)) }}</td>
+                  <td class="num">
+                    <form method="post" action="{{ url_for('audience.remove_from_list', list_id=found.id, contact_id=contact.id) }}">{{ csrf() }}
+                      <button class="link-button small" type="submit">Take off</button></form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% set last = page * page_size %}
+        <div class="pager">
+          <span class="muted small">Showing {{ (page - 1) * page_size + 1 }}&ndash;{{ [last, total]|min }} of {{ total|number }}</span>
+          {% if page > 1 %}<a class="button button-quiet button-small" href="{{ url_for('audience.list_page', list_id=found.id, page=page - 1) }}">Previous</a>{% endif %}
+          {% if last < total %}<a class="button button-quiet button-small" href="{{ url_for('audience.list_page', list_id=found.id, page=page + 1) }}">Next</a>{% endif %}
+        </div>
+      {% else %}
+        {% call empty('Nobody on This List') %}<p>Add people who are in your audience, or choose this list when you import a CSV file.</p>{% endcall %}
+      {% endif %}
+    </section>
+    <aside class="card stack-small">
+      <h2>Add People</h2>
+      <p class="muted small">Emails of people already in your audience, one per line.</p>
+      <form method="post" action="{{ url_for('audience.add_to_list', list_id=found.id) }}" class="stack-small">
+        {{ csrf() }}
+        <label class="field"><span class="visually-hidden">Emails</span><textarea name="emails" rows="5" placeholder="ana@example.com"></textarea></label>
+        <div class="form-actions"><button class="button" type="submit">Add to list</button></div>
+      </form>
+      <hr>
+      <form method="post" action="{{ url_for('audience.delete_list', list_id=found.id) }}" data-confirm="Delete the list {{ found.name }}? The people on it stay in your audience.">
+        {{ csrf() }}<button class="button button-danger" type="submit">{{ icon('trash', 16) }} Delete list</button>
+      </form>
+    </aside>
+  </div>
+{% endblock %}

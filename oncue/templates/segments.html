@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty %}
+{% from "_icons.html" import icon %}
+{% block title %}Segments - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% call page_head('Audience') %}
+    <a class="button" href="{{ url_for('audience.new_segment') }}">{{ icon('plus', 16) }} New segment</a>
+  {% endcall %}
+  {% include "_audience_tabs.html" %}
+  {% if rows %}
+    <div class="grid grid-3">
+      {% for segment, count, rules in rows %}
+        <a class="card card-link" href="{{ url_for('audience.segment_page', segment_id=segment.id) }}">
+          <h2>{{ segment.name }}</h2>
+          <ul class="rule-list">{% for rule in rules %}<li>{% if not loop.first %}<span class="joiner">{{ 'or' if segment.match == 'any' else 'and' }}</span> {% endif %}{{ rule }}</li>{% endfor %}</ul>
+          <p class="card-foot">{{ plural(count, 'person', 'people') }} can get emails</p>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    {% call empty('No Segments Yet') %}<p>A segment finds people by rules, like "city is Cebu" or "added in the last 30 days". It updates by itself as your audience changes.</p>
+      <a class="button" href="{{ url_for('audience.new_segment') }}">New segment</a>{% endcall %}
+  {% endif %}
+{% endblock %}

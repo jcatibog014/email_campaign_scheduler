@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, csrf, field %}
+{% block title %}{{ 'Edit Segment' if found else 'New Segment' }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Edit Segment' if found else 'New Segment', back=url_for('audience.segment_page', segment_id=found.id) if found else url_for('audience.segments_page'), back_label=found.name if found else 'Segments') }}
+  <form method="post" class="card stack form-card">
+    {{ csrf() }}
+    {{ field('name', 'Name', values.name, errors.name, attrs='maxlength="80"') }}
+    <fieldset class="choices">
+      <legend>Who is in it</legend>
+      <label class="check"><input type="radio" name="match" value="all"{% if values.match != 'any' %} checked{% endif %}> People who match every rule</label>
+      <label class="check"><input type="radio" name="match" value="any"{% if values.match == 'any' %} checked{% endif %}> People who match at least one</label>
+    </fieldset>
+    <fieldset class="stack-small">
+      <legend class="field-label">Rules <span class="hint">Leave a row's first box empty to skip it</span></legend>
+      {% for rule in rows %}
+        <div class="rule-row">
+          <label class="field"><span class="visually-hidden">Rule {{ loop.index }}: look at</span>
+            <select name="rule_field_{{ loop.index0 }}">
+              <option value="">&ndash;</option>
+              {% for key, label in field_choices %}<option value="{{ key }}"{% if key == rule.field %} selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select></label>
+          <label class="field"><span class="visually-hidden">Rule {{ loop.index }}: how</span>
+            <select name="rule_op_{{ loop.index0 }}">
+              {% for kind, choices in ops.items() %}<optgroup label="{{ {'text': 'Text', 'tag': 'Tag', 'list': 'List', 'days': 'Added'}[kind] }}">
+                {% for key, label in choices %}<option value="{{ key }}"{% if key == rule.op %} selected{% endif %}>{{ label }}</option>{% endfor %}
+              </optgroup>{% endfor %}
+            </select></label>
+          <label class="field"><span class="visually-hidden">Rule {{ loop.index }}: value</span>
+            <input type="text" name="rule_value_{{ loop.index0 }}" value="{{ rule.value }}" placeholder="Value" maxlength="200"></label>
+        </div>
+      {% endfor %}
+      {% if errors.rules %}<p class="field-error">{{ errors.rules }}</p>{% endif %}
+      <p class="muted small">For a List rule, type the list's name{% if list_names %} ({{ list_names.values()|sort|join(', ') }}){% endif %}. For Added, a number of days.</p>
+    </fieldset>
+    {% if preview %}
+      <div class="preview-box" role="status">
+        <strong>{{ plural(preview.count, 'person', 'people') }}</strong> match{{ 'es' if preview.count == 1 else '' }} now and can get emails.
+        {% if preview.sample %}<span class="muted">For example: {% for contact in preview.sample %}{{ contact.name or contact.email }}{% if not loop.last %}, {% endif %}{% endfor %}.</span>{% endif %}
+      </div>
+    {% endif %}
+    <div class="form-actions">
+      <button class="button button-quiet" type="submit" name="action" value="preview">Count matches</button>
+      <button class="button" type="submit" name="action" value="save">{{ 'Save segment' if found else 'Make segment' }}</button>
+    </div>
+  </form>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, csrf, field, textarea %}
+{% block title %}{{ 'Edit List' if found else 'New List' }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Edit List' if found else 'New List', back=url_for('audience.list_page', list_id=found.id) if found else url_for('audience.lists'), back_label=found.name if found else 'Lists') }}
+  {% set posted = request.method == 'POST' %}
+  <form method="post" class="card stack form-card">
+    {{ csrf() }}
+    {{ field('name', 'Name', form.get('name') if posted else (found.name if found else ''), errors.name, attrs='required maxlength="80" autofocus') }}
+    {{ textarea('description', 'Description', form.get('description') if posted else (found.description if found else ''), errors.description, hint='Optional', rows=2, attrs='maxlength="300"') }}
+    <label class="check"><input type="checkbox" name="is_topic" value="yes"{% if (form.get('is_topic') == 'yes' if posted else (found.is_topic if found else true)) %} checked{% endif %}>
+      <span>A topic: show it on the unsubscribe page, so people can leave just this list<br><span class="muted small">Leave it off for lists people shouldn't see, like "Volunteers to thank".</span></span></label>
+    <div class="form-actions">
+      <a class="button button-quiet" href="{{ url_for('audience.list_page', list_id=found.id) if found else url_for('audience.lists') }}">Cancel</a>
+      <button class="button" type="submit">{{ 'Save list' if found else 'Make list' }}</button>
+    </div>
+  </form>
+{% endblock %}
