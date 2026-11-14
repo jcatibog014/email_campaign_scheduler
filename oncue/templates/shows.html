@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty, show_status %}
+{% from "_icons.html" import icon %}
+{% block title %}Shows - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% call page_head('Shows') %}
+    <a class="button" href="{{ url_for('shows.new') }}">{{ icon('plus', 16) }} New show</a>
+  {% endcall %}
+  <ul class="tabs" aria-label="Shows by cue">
+    {% for key, label, _statuses in tabs %}
+      <li><a href="{{ url_for('shows.index', tab=key if key != 'all' else none) }}"{% if key == tab %} aria-current="page"{% endif %}>{{ label }} <span class="count">{{ tab_counts[key] }}</span></a></li>
+    {% endfor %}
+  </ul>
+  {% if shows %}
+    <div class="table-wrap">
+      <table class="fit-table">
+        <thead><tr><th>Show</th><th>Cue</th><th>Audience</th><th>When</th></tr></thead>
+        <tbody>
+          {% for show in shows %}
+            <tr>
+              <td><a class="row-link" href="{{ url_for('shows.page', show_id=show.id) }}">{{ show.name }}</a>
+                <div class="muted small">{{ show.subject|plain_subject or 'No subject yet' }}</div></td>
+              <td>{{ show_status(show.status) }}</td>
+              <td data-label="To">{{ labels[show.id] }}</td>
+              <td data-label="When" class="nowrap">
+                {% if show.status == 'standby' %}{{ show.send_at|nice_datetime }}<div class="muted small">{{ show.send_at|from_now }}</div>
+                {% elif show.status in ('go', 'hold') %}Started {{ show.started_at|ago }}
+                {% elif show.finished_at %}{{ show.finished_at|nice_datetime }}
+                {% else %}<span class="muted">Not scheduled</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% elif tab != 'all' %}
+    {% call empty('Nothing Here') %}<p>No shows have this cue right now.</p>{% endcall %}
+  {% else %}
+    {% call empty('No Shows Yet') %}<p>A show is one email to an audience. Write it, choose who gets it, and set the time.</p>
+      <a class="button" href="{{ url_for('shows.new') }}">New show</a>{% endcall %}
+  {% endif %}
+  <details class="fold top-gap">
+    <summary>What the cue words mean</summary>
+    <dl class="cue-legend">
+      {% for key, cue in SHOW_CUES.items() %}<dt>{{ show_status(key) }}</dt><dd>{{ cue.note }}</dd>{% endfor %}
+    </dl>
+  </details>
+{% endblock %}

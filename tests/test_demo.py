@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from oncue import audience, db, seed
 from oncue.dates import utcnow
-from oncue.models import Contact, ContactList, Segment, User, Workspace
+from oncue.models import Contact, ContactList, Script, Segment, Show, User, Workspace
 
 from .conftest import browser, is_logged_in, make_owner, post, text
 
@@ -46,6 +46,23 @@ def test_the_demo_audience_has_examples_on_every_page(app):
         response = client.get(path)
         assert response.status_code == 200 and expected in text(response), path
         assert 'class="empty' not in text(response), path  # no empty stage anywhere
+
+
+def test_the_demo_has_scripts_and_shows(app):
+    client = start_demo(app)
+    with app.app_context():
+        s = db.session()
+        workspace = s.query(Workspace).filter_by(is_demo=True).one()
+        standby = s.scalar(select(Show).where(Show.workspace_id == workspace.id, Show.status == "standby"))
+        script_id = s.scalar(select(Script.id).where(Script.workspace_id == workspace.id))
+    for path, expected in (("/scripts", "Monthly Programme"), (f"/scripts/{script_id}", "Merge Fields"),
+                           ("/shows/", "December Programme"), (f"/shows/{standby.id}", "Standby"),
+                           ("/stage", "Up Next"), ("/shows/?tab=rehearsal", "Closing Night Reminder")):
+        response = client.get(path)
+        assert response.status_code == 200 and expected in text(response), path
+        assert 'class="empty' not in text(response), path
+    frame = client.get(f"/shows/{standby.id}/frame")
+    assert "As a Season pass holder" in text(frame) or "friend of the theatre" in text(frame)
 
 
 def test_one_network_can_start_ten_demos_an_hour(app, monkeypatch):

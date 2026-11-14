@@ -1,0 +1,12 @@
+{# The merge fields you can use, and any that look like typos. #}
+<section class="card stack-small merge-help">
+  <h2>Merge Fields</h2>
+  <p class="muted small">Write a field in double braces and each person sees their own. After a <code>|</code>, what people without it see.</p>
+  <p class="small"><code>Hi {{ '{{first_name|there}}' }},</code> <span class="muted">becomes</span> Hi Ana, <span class="muted">or</span> Hi there,</p>
+  <ul class="field-list">
+    {% for name in ['first_name', 'last_name', 'name', 'email'] + custom_fields %}<li><code>{{ '{{' ~ name ~ '}}' }}</code></li>{% endfor %}
+  </ul>
+  {% if unknown %}
+    <p class="field-error">Nobody has {% for name in unknown %}<code>{{ '{{' ~ name ~ '}}' }}</code>{% if not loop.last %}, {% endif %}{% endfor %}. Check the spelling, or add a fallback after a <code>|</code>, or it shows as nothing.</p>
+  {% endif %}
+</section>

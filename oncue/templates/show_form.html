@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, csrf, field %}
+{% block title %}{{ 'Edit ' ~ found.name if found else 'New Show' }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Edit Show' if found else 'New Show', back=url_for('shows.page', show_id=found.id) if found else url_for('shows.index'), back_label=found.name if found else 'Shows') }}
+  <div class="editor">
+    <form method="post" class="card stack" id="email-form">
+      {{ csrf() }}
+      {% if found %}<input type="hidden" name="version" value="{{ found.version }}">{% endif %}
+      {% if script %}<input type="hidden" name="script_id" value="{{ script.id }}"><p class="muted small">Starting from the script {{ script.name }}. This show gets its own copy.</p>{% endif %}
+      {% if errors.version %}<p class="form-error" role="alert">{{ errors.version }}</p>{% endif %}
+      {{ field('name', 'Show name', values.name, errors.name, hint='Only you see it', attrs='required maxlength="120"') }}
+      <label class="field{% if errors.audience %} has-error{% endif %}">
+        <span class="field-label">Who gets it <span class="hint">Counts are people who can get emails now</span></span>
+        <select name="audience">
+          {% for value, label in choices %}<option value="{{ value }}"{% if value == values.audience %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        {% if errors.audience %}<p class="field-error">{{ errors.audience }}</p>{% endif %}
+      </label>
+      {% if not found and scripts and not script %}
+        <p class="muted small">Or start from a script: {% for item in scripts %}<a href="{{ url_for('shows.new', script=item.id) }}">{{ item.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+      {% endif %}
+      {% include "_email_fields.html" %}
+      <div class="form-actions">
+        <a class="button button-quiet" href="{{ url_for('shows.page', show_id=found.id) if found else url_for('shows.index') }}">Cancel</a>
+        <button class="button" type="submit">{{ 'Save show' if found else 'Save in rehearsal' }}</button>
+      </div>
+      <p class="muted small">You choose when it goes out on the show's page.</p>
+    </form>
+    <div class="editor-side stack">
+      {% set frame_url = url_for('shows.frame', show_id=found.id) if found else none %}
+      {% include "_preview.html" %}
+      {% include "_merge_help.html" %}
+    </div>
+  </div>
+{% endblock %}

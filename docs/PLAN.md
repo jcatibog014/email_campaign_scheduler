@@ -114,7 +114,7 @@ Menu: **Stage** (home), **Shows**, **Call Board** (schedule calendar), **Audienc
 
 - [x] Stage 1: setup, login, Try Demo, Settings, the backstage look
 - [x] Stage 2: Audience
-- [ ] Stage 3: Scripts and Shows
+- [x] Stage 3: Scripts and Shows
 - [ ] Stage 4: The job queue and worker
 - [ ] Stage 5: Sending, retries and rate limits
 - [ ] Stage 6: Delivery tracking

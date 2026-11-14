@@ -573,3 +573,43 @@ a.chip:hover { border-color: var(--control-border); }
 /* The unsubscribe page: a lit stage, no menu. */
 .public-stage { min-height: 100vh; }
 .public-stage .card { width: min(100%, 32rem); }
+
+/* ---------- Scripts and shows: the editor with its preview ---------- */
+
+.editor { display: grid; gap: 1.25rem; grid-template-columns: minmax(0, 1.15fr) minmax(20rem, 1fr); align-items: start; }
+.editor-side { position: sticky; top: 1rem; }
+@media (max-width: 64rem) { .editor { grid-template-columns: 1fr; } .editor-side { position: static; } }
+.body-editor { font: .95rem/1.55 ui-monospace, "Cascadia Mono", Consolas, monospace; max-width: none; min-height: 18rem; }
+.editor textarea, .editor input[type="text"] { max-width: none; }
+.preview-controls { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
+.preview-controls .field { flex: 1 1 14rem; }
+.preview-card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.preview-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; padding: .7rem .9rem; border-bottom: 1px solid var(--rule); background: var(--surface-soft); }
+.preview-as { display: flex; gap: .4rem; align-items: center; margin: 0; }
+.preview-as select { min-height: 2rem; padding: .2rem .5rem; font-size: .88rem; }
+.preview-frame { display: block; width: 100%; height: 38rem; border: 0; background: #f4efe7; }
+.merge-help h2 { font-size: 1.05rem; }
+.field-list { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .35rem; }
+.card-title-link { color: inherit; text-decoration: none; }
+.card-title-link:hover { color: var(--link); text-decoration: underline; }
+.script-subject { font-weight: 600; margin-top: .5rem; }
+.card-actions { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; }
+
+/* A show's page. */
+.show-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; margin-top: 1.1rem; }
+.show-actions form { margin: 0; }
+.schedule-form { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; flex: 1 1 100%; }
+.schedule-form .field { flex: 0 1 16rem; }
+.big-time { font: 700 1.25rem/1.3 var(--font-display); margin-top: .6rem; }
+.show-cue .cue-note { margin-top: -.3rem; }
+
+/* ---------- The Stage ---------- */
+
+.stage-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); align-items: start; margin-bottom: 1.6rem; }
+.stage-section { display: grid; gap: 1rem; align-content: start; }
+.section-title { font: inherit; margin: 0; }
+.quiet-line { color: var(--muted); padding: .4rem 0; }
+.mini-board { display: grid; gap: 1.4rem 1.1rem; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); padding: 1.6rem 1.2rem 1.3rem; }
+.cue-card-title { display: block; font: 700 1rem/1.3 var(--font-display); margin-top: .25rem; color: #2b1d24; }
+.cue-card-time { display: block; margin-top: .9rem; font: 700 .85rem/1.3 var(--font-body); color: #8a3a0b; }
+.cue-card-meta { display: block; font-size: .8rem; color: #5b4b50; line-height: 1.35; margin-top: .15rem; }

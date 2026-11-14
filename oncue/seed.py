@@ -122,6 +122,57 @@ def seed_audience(s, workspace, moment):
     return people
 
 
+SCRIPTS = {
+    "Welcome to the Company": (
+        "Welcome to Teatro Luna, {{first_name|friend}}",
+        "Your seat in the house is saved.",
+        "Hi {{first_name|there}},\n\nThank you for joining **Teatro Luna**. Every month we'll tell you what's "
+        "on stage, when tickets open, and how to join a workshop.\n\n"
+        "Our next play is *Ang Huling Ilaw* (The Last Light). [See the season](https://teatro-luna.example/season).\n\n"
+        "See you at the theatre,\n\nLuna and the company"),
+    "Show Reminder": (
+        "Tonight: doors open at 7, {{first_name|friend}}",
+        "Bring your ticket on your phone.",
+        "Hi {{first_name|there}},\n\nA reminder that **tonight** is the night. Doors open at **7:00 PM** and the "
+        "curtain goes up at 7:30.\n\n- Show your ticket on your phone at the door\n- Parking is on Mabini Street\n\n"
+        "[Get directions](https://teatro-luna.example/visit)\n\nBreak a leg (that's theatre for good luck)!"),
+    "Monthly Programme": (
+        "What's on in {{city|the city}} this month",
+        "Three plays, two workshops and a reading.",
+        "# This Month at Teatro Luna\n\nHi {{first_name|there}}, here's what's coming up:\n\n"
+        "1. **Ang Huling Ilaw** (The Last Light), Fridays and Saturdays\n"
+        "2. **Playwriting for Beginners**, a four-week workshop\n"
+        "3. **A reading of new plays** by students\n\n"
+        "As a {{plan|friend of the theatre}} holder you get first pick of seats. "
+        "[Book now](https://teatro-luna.example/book)."),
+}
+
+
+def seed_scripts_and_shows(s, workspace, moment):
+    from .models import ContactList, Script, Show
+    made = {}
+    for name, (subject, preheader, body) in SCRIPTS.items():
+        made[name] = Script(workspace_id=workspace.id, name=name, subject=subject, preheader=preheader, body=body,
+                            created_at=moment - timedelta(days=90), updated_at=moment - timedelta(days=5))
+        s.add(made[name])
+    s.flush()
+    season = s.scalar(select(ContactList.id).where(ContactList.workspace_id == workspace.id,
+                                                   ContactList.name == "Season Subscribers"))
+    reminder = made["Show Reminder"]
+    programme = made["Monthly Programme"]
+    # One on Standby the day after tomorrow at 9:00 AM Manila time, and one still in rehearsal.
+    nine = (moment + timedelta(days=2)).replace(hour=1, minute=0, second=0, microsecond=0)
+    s.add_all([
+        Show(workspace_id=workspace.id, name="December Programme", subject=programme.subject,
+             preheader=programme.preheader, body=programme.body, script_id=programme.id, audience_kind="all",
+             status="standby", send_at=nine, created_at=moment - timedelta(days=3), updated_at=moment),
+        Show(workspace_id=workspace.id, name="Closing Night Reminder", subject=reminder.subject,
+             preheader=reminder.preheader, body=reminder.body, script_id=reminder.id, audience_kind="list",
+             audience_ref=str(season), created_at=moment - timedelta(days=1), updated_at=moment),
+    ])
+    return made
+
+
 def people_with(people, tag):
     return [contact for contact, _plan in people if tag in contact.tag_names]
 
@@ -138,6 +189,7 @@ def build(s, moment):
                             secrets.token_urlsafe(16), is_demo=True,
                             session_version=secrets.randbelow(10**9) + 2, created_at=moment)
     seed_audience(s, workspace, moment)
+    seed_scripts_and_shows(s, workspace, moment)
     return user
 
 

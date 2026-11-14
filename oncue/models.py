@@ -199,3 +199,53 @@ class CsvImport(Base):
     status: Mapped[str] = mapped_column(String(10), default="mapping")  # mapping / review / done
     result: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+# ---------- Stage 3: scripts and shows ----------
+
+class Script(Base):
+    """A saved email (a template): subject, preview line and a Markdown body
+    with merge fields like {{first_name|there}}. A show copies it when made,
+    so changing a script later never changes a show that already went out."""
+    __tablename__ = "scripts"
+    __table_args__ = (UniqueConstraint("workspace_id", "name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(80))
+    subject: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    preheader: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    body: Mapped[str] = mapped_column(Text, default="", server_default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class Show(Base):
+    """A campaign: one email to an audience, at a time (shows.py has its rules).
+
+    version: SQLAlchemy adds "AND version = <what we read>" to every UPDATE and
+    raises StaleDataError if nothing matched. So when the worker moves a show
+    on (Go -> Curtain Down) while the owner presses Hold on an old page, one of
+    them fails loudly instead of quietly undoing the other (optimistic locking).
+    """
+    __tablename__ = "shows"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    subject: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    preheader: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    body: Mapped[str] = mapped_column(Text, default="", server_default="")
+    script_id: Mapped[int | None] = mapped_column(ForeignKey("scripts.id", ondelete="SET NULL"), index=True)
+    # Who gets it: "all", or "list" / "segment" / "tag" with audience_ref (an id or the tag).
+    audience_kind: Mapped[str] = mapped_column(String(10), default="all", server_default="all")
+    audience_ref: Mapped[str | None] = mapped_column(String(60))
+    status: Mapped[str] = mapped_column(String(15), default="rehearsal", server_default="rehearsal", index=True)
+    send_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+
+    __mapper_args__ = {"version_id_col": version}

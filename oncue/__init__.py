@@ -100,6 +100,8 @@ def create_app(test_config=None):
     from . import auth, cues, db, formatting, seed
     from .views import audience as audience_views
     from .views import demo, public, settings, stage
+    from .views import scripts as script_views
+    from .views import shows as show_views
 
     db.init_app(app)
     auth.init_app(app)
@@ -108,8 +110,10 @@ def create_app(test_config=None):
     seed.init_app(app)
     settings.init_app(app)
     public.init_app(app)
+    show_views.init_app(app)
     # auth comes first: its before_request (load_user) must run before the others'.
-    for blueprint in (auth.bp, stage.bp, settings.bp, demo.bp, audience_views.bp, public.bp):
+    for blueprint in (auth.bp, stage.bp, settings.bp, demo.bp, audience_views.bp, public.bp,
+                      script_views.bp, show_views.bp):
         app.register_blueprint(blueprint)
 
     app.jinja_env.globals.update(APP_NAME=APP_NAME, TAGLINE=TAGLINE,

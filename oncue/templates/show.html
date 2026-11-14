@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, csrf, show_status %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ show.name }} - {{ APP_NAME }}{% endblock %}
+{% macro button(endpoint, label, style='button-quiet', confirm=None, icon_name=None) %}
+  <form method="post" action="{{ url_for(endpoint, show_id=show.id) }}"{% if confirm %} data-confirm="{{ confirm }}"{% endif %}>
+    {{ csrf() }}<input type="hidden" name="version" value="{{ show.version }}">
+    <button class="button {{ style }}" type="submit">{% if icon_name %}{{ icon(icon_name, 16) }} {% endif %}{{ label }}</button>
+  </form>
+{% endmacro %}
+{% block content %}
+  {% call page_head(show.name, back=url_for('shows.index'), back_label='Shows') %}
+    {% if show.status in ('rehearsal', 'standby') %}<a class="button button-quiet" href="{{ url_for('shows.edit', show_id=show.id) }}">{{ icon('pencil', 16) }} Edit</a>{% endif %}
+    {{ button('shows.duplicate', 'Duplicate', icon_name='copy') }}
+  {% endcall %}
+
+  <div class="split">
+    <div class="stack">
+      <section class="card show-cue{% if show.status in ('go', 'hold') %} marquee{% if show.status == 'go' %} is-live{% endif %}{% endif %}">
+        <div class="card-head"><h2>Cue</h2>{{ show_status(show.status) }}</div>
+        <p class="cue-note">{{ show_cue(show.status).note }}</p>
+        {% if show.status == 'standby' %}
+          <p class="big-time">{{ show.send_at|nice_datetime }} <span class="muted">({{ show.send_at|from_now }})</span></p>
+        {% elif show.started_at %}
+          <p class="muted small">Started {{ show.started_at|nice_datetime }}{% if show.finished_at %}; finished {{ show.finished_at|nice_datetime }}{% endif %}.</p>
+        {% endif %}
+        {% block progress %}{% if progress_template is defined %}{% include progress_template %}{% endif %}{% endblock %}
+
+        {% if problems %}
+          <div class="banner banner-hold"><div><strong>Not ready to go on Standby</strong>{% for problem in problems %} {{ problem }}{% endfor %}</div></div>
+        {% endif %}
+
+        <div class="show-actions">
+          {% if show.status in ('rehearsal', 'standby') and not problems %}
+            <form class="schedule-form" method="post" action="{{ url_for('shows.schedule', show_id=show.id) }}">
+              {{ csrf() }}<input type="hidden" name="version" value="{{ show.version }}">
+              <label class="field"><span class="field-label">{{ 'Change the time' if show.status == 'standby' else 'Send at' }} <span class="hint">{{ g.workspace.time_zone.replace('_', ' ') }} time</span></span>
+                <input type="datetime-local" name="send_at" value="{{ (show.send_at or now)|iso_local }}" required></label>
+              <button class="button" type="submit">{{ icon('clock', 16) }} {{ 'Save time' if show.status == 'standby' else 'Schedule' }}</button>
+            </form>
+            {{ button('shows.start', 'Start now', 'button-go', confirm='Send ' ~ show.name ~ ' to ' ~ audience_count ~ ' people now?', icon_name='play') }}
+          {% endif %}
+          {% if show.status == 'standby' %}{{ button('shows.unschedule', 'Back to rehearsal') }}{% endif %}
+          {% if show.status == 'go' %}{{ button('shows.hold', 'Hold', icon_name='pause') }}{% endif %}
+          {% if show.status == 'hold' %}{{ button('shows.resume', 'Resume', 'button-go', icon_name='play') }}{% endif %}
+          {% if show.status in ('standby', 'go', 'hold') %}{{ button('shows.cut', 'Cut', 'button-danger', confirm='Cut ' ~ show.name ~ '? Nothing more will be sent, and it can\'t be undone.') }}{% endif %}
+          {% if show.status == 'rehearsal' %}{{ button('shows.delete', 'Delete', 'button-danger', confirm='Delete ' ~ show.name ~ '?', icon_name='trash') }}{% endif %}
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>The Email</h2>
+        <dl class="facts top-gap">
+          <dt>To</dt><dd>{{ audience_label }} <span class="muted">({{ plural(audience_count, 'person', 'people') }} can get emails now)</span></dd>
+          <dt>From</dt><dd>{{ g.workspace.sender_name }} &lt;{{ g.workspace.sender_email }}&gt;</dd>
+          <dt>Subject</dt><dd>{{ show.subject or '–' }}</dd>
+          {% if show.preheader %}<dt>Preview line</dt><dd>{{ show.preheader }}</dd>{% endif %}
+        </dl>
+      </section>
+      {% block after_email %}{% for template_name in show_sections|default([]) %}{% include template_name %}{% endfor %}{% endblock %}
+    </div>
+    <div class="editor-side">
+      {% set frame_url = url_for('shows.frame', show_id=show.id) %}
+      {% include "_preview.html" %}
+    </div>
+  </div>
+{% endblock %}

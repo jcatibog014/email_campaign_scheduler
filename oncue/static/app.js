@@ -167,3 +167,24 @@ function setUpWatchChanges() {
 const setUps = [setUpToasts, setUpWatchChanges, setUpInstall, setUpTheme, setUpMenu, setUpPopovers,
   setUpConfirm, setUpAutoSubmit, setUpCopy];
 document.addEventListener("DOMContentLoaded", () => setUps.forEach((setUp) => setUp()));
+
+// The email editor's preview follows your typing: after a short pause, the Preview button is
+// pressed for you (it posts the unsaved email into the preview frame). Without JavaScript,
+// press Preview yourself.
+function setUpLivePreview() {
+  const body = document.querySelector("[data-live-preview]");
+  if (!body) return;
+  const form = body.form;
+  const button = form.querySelector("[data-preview-button]");
+  let timer = null;
+  const refresh = () => form.requestSubmit(button);
+  const later = () => {
+    clearTimeout(timer);
+    timer = setTimeout(refresh, 700);
+  };
+  form.addEventListener("input", later);
+  form.addEventListener("change", later);
+  const frame = document.querySelector("iframe[name='preview']");
+  if (frame && frame.getAttribute("src") === "about:blank") refresh();
+}
+setUps.push(setUpLivePreview);

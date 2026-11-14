@@ -82,7 +82,8 @@ def from_now(moment):
     if seconds < 86400:
         hours, rest = divmod(int(seconds // 60), 60)
         return f"in {hours} h {rest} min" if rest else f"in {hours} h"
-    return nice_datetime(moment)
+    days = round(seconds / 86400)
+    return "tomorrow" if days == 1 else f"in {days} days"
 
 
 def duration(seconds):
@@ -126,8 +127,14 @@ def day_iso(day):
     return day.isoformat() if isinstance(day, date) else ""
 
 
+def plain_subject(text):
+    """A subject for lists: merge fields show their fallback ("Hi there" for "Hi {{first_name|there}}")."""
+    from .emails import fill
+    return " ".join(fill(text, {}).split())
+
+
 def init_app(app):
-    for function in (nice_date, short_date, clock, nice_datetime, ago, from_now, duration, number, iso_local,
+    for function in (plain_subject, nice_date, short_date, clock, nice_datetime, ago, from_now, duration, number, iso_local,
                      day_iso):
         app.jinja_env.filters[function.__name__] = function
     app.jinja_env.globals.update(plural=plural, percent=percent)
