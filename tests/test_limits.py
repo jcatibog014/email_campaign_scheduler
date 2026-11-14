@@ -35,8 +35,13 @@ def setup(ctx, emails, send_at=T0, **settings):
 
 
 def statuses(ctx, show_id):
+    """Message counts, with every "went out" status (sent, delivered, opened, clicked) counted as sent."""
     ctx.expire_all()
-    return sending.counts(ctx, show_id)
+    collapsed = {}
+    for status, number in sending.counts(ctx, show_id).items():
+        key = "sent" if status in sending.ACCEPTED else status
+        collapsed[key] = collapsed.get(key, 0) + number
+    return collapsed
 
 
 def message_for(ctx, email):
@@ -138,7 +143,7 @@ def test_flaky_works_on_the_third_try_with_backoff(ctx):
     _workspace, show = setup(ctx, ["flaky.ana@example.com"])
     worker.simulate(ctx, T0, T0 + timedelta(hours=1))
     message = message_for(ctx, "flaky.ana@example.com")
-    assert message.status == "sent" and message.attempts == 3
+    assert message.status in sending.ACCEPTED and message.attempts == 3
     assert ctx.scalar(select(Job.attempts).where(Job.kind == "send_message")) == 3
 
 
@@ -171,7 +176,7 @@ def test_the_safety_curtain_falls_and_rises(ctx):
     ctx.commit()
     worker.simulate(ctx, later, later + timedelta(minutes=2))
     assert buckets.breaker(ctx, workspace.id, "practice").state == "closed"
-    assert message_for(ctx, "ana@example.com").status == "sent"
+    assert message_for(ctx, "ana@example.com").status in sending.ACCEPTED
 
 
 def test_a_failed_probe_lowers_it_again(ctx):
@@ -213,7 +218,7 @@ def test_a_timeout_is_retried_with_the_same_token_and_sent_once(ctx, monkeypatch
     worker.simulate(ctx, T0, T0 + timedelta(hours=1))
     assert calls[0] == calls[1]  # the retry used the same token...
     assert ctx.scalar(select(func.count()).select_from(PracticeMail)) == 1  # ...so it went once
-    assert message_for(ctx, "ana@example.com").status == "sent"
+    assert message_for(ctx, "ana@example.com").status in sending.ACCEPTED
 
 
 def test_a_clear_refusal_gets_a_new_token(ctx):

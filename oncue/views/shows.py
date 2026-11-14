@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, abort, flash, g, jsonify, redirect, render_template, request, url_for
 from sqlalchemy import case, func, select
 
-from .. import audience, buckets, db, emails, limits, mailers, sending, shows
+from .. import audience, buckets, db, emails, limits, mailers, results, sending, shows, tracking
 from ..auth import login_required
 from ..dates import from_zone, utcnow
 from ..models import Contact, Message, Performance, Script, Show
@@ -299,7 +299,10 @@ def progress(s, show):
     tests = s.scalars(select(Message).where(Message.show_id == show.id, Message.is_test.is_(True))
                       .order_by(Message.created_at.desc()).limit(5)).all()
     return {"progress_template": "_show_progress.html", "performances": rows, "performance_count": len(found),
-            "estimate": estimate, "tests": tests, "show_sections": ["_show_test.html"],
+            "estimate": estimate, "tests": tests,
+            "show_sections": (["_show_results.html"] if found else []) + ["_show_test.html"],
+            "results": results.for_show(s, show.id) if found else None,
+            "link_clicks": results.link_clicks(s, show.id) if found else [],
             "test_address": g.user.email if not g.user.is_demo else "luna@teatro-luna.example"}
 
 
@@ -349,6 +352,54 @@ def progress_json(show_id):
     return jsonify(status=found.status, meter=meter)
 
 
+# ---------- Every email of a show ----------
+
+EMAIL_GROUPS = [
+    ("all", "All", None),
+    ("wings", "In the Wings", (sending.WINGS, sending.WAITING, sending.ON_STAGE)),
+    ("retrying", "Missed Cue", (sending.MISSED_CUE,)),
+    ("out", "Went Out", sending.ACCEPTED),
+    ("trouble", "Trouble", (sending.DROPPED, sending.UNSURE, "bounced", "complained")),
+    ("not_sent", "Not Sent", (sending.SKIPPED, sending.CUT)),
+]
+EMAILS_PAGE = 50
+
+
+@bp.get("/<int:show_id>/emails")
+def emails_page(show_id):
+    s = db.session()
+    found = show_or_404(s, show_id)
+    group = request.args.get("group", "all")
+    statuses = dict((key, value) for key, _label, value in EMAIL_GROUPS).get(group)
+    q = request.args.get("q", "").strip().lower()[:100]
+    page_number = max(request.args.get("page", 1, type=int), 1)
+    base = select(Message).where(Message.show_id == found.id, Message.is_test.is_(False))
+    counts = sending.counts(s, found.id)
+    group_counts = {key: sum(counts.values()) if value is None else sum(counts.get(v, 0) for v in value)
+                    for key, _label, value in EMAIL_GROUPS}
+    if statuses:
+        base = base.where(Message.status.in_(statuses))
+    if q:
+        base = base.where(func.lower(Message.email).like(f"%{q.replace('%', '').replace('_', '')}%"))
+    total = s.scalar(select(func.count()).select_from(base.subquery()))
+    rows = s.scalars(base.order_by(Message.updated_at.desc(), Message.id.desc())
+                     .limit(EMAILS_PAGE).offset((page_number - 1) * EMAILS_PAGE)).all()
+    return render_template("show_emails.html", show=found, rows=rows, group=group, groups=EMAIL_GROUPS,
+                           group_counts=group_counts, q=q, total=total, page=page_number, page_size=EMAILS_PAGE)
+
+
+@bp.get("/<int:show_id>/emails/<int:message_id>")
+def email_page(show_id, message_id):
+    s = db.session()
+    found = show_or_404(s, show_id)
+    message = s.get(Message, message_id)
+    if message is None or message.show_id != found.id:
+        abort(404)
+    contact = s.get(Contact, message.contact_id) if message.contact_id else None
+    return render_template("show_email.html", show=found, message=message, contact=contact,
+                           events=tracking.events_of(s, message.id), labels=tracking.EVENT_LABELS)
+
+
 # ---------- On the Stage (home page) ----------
 
 def stage_panel(s, workspace):
@@ -362,7 +413,16 @@ def stage_panel(s, workspace):
     labels = {row.id: audience.audience_label(s, workspace, row.audience_kind, row.audience_ref)
               for row in (*live, *upcoming, *finished)}
     return {"live": live, "upcoming": upcoming, "finished": finished, "show_total": total, "labels": labels,
-            "meters": sending.meters_for(s, [row.id for row in live])}
+            "meters": sending.meters_for(s, [row.id for row in live]),
+            "results": results.for_shows(s, [row.id for row in finished])}
+
+
+def contact_history(s, contact):
+    """The emails a contact got (their page in Audience)."""
+    rows = s.execute(select(Message, Show).join(Show, Show.id == Message.show_id)
+                     .where(Message.contact_id == contact.id, Message.is_test.is_(False))
+                     .order_by(Message.created_at.desc()).limit(20)).all()
+    return {"history_template": "_contact_history.html", "history": rows}
 
 
 def init_app(app):
@@ -370,3 +430,6 @@ def init_app(app):
         stage.panels.append(("shows", stage_panel))
     if progress not in page_extras:
         page_extras.append(progress)
+    from . import audience as audience_views
+    if contact_history not in audience_views.contact_extras:
+        audience_views.contact_extras.append(contact_history)

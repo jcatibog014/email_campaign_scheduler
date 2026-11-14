@@ -32,8 +32,13 @@ def count(ctx, model, *where):
 
 
 def statuses(ctx, show_id):
+    """Message counts, with every "went out" status (sent, delivered, opened, clicked) counted as sent."""
     ctx.expire_all()
-    return sending.counts(ctx, show_id)
+    collapsed = {}
+    for status, number in sending.counts(ctx, show_id).items():
+        key = "sent" if status in sending.ACCEPTED else status
+        collapsed[key] = collapsed.get(key, 0) + number
+    return collapsed
 
 
 def test_a_show_goes_out_at_its_time_and_the_curtain_comes_down(ctx):
@@ -148,7 +153,7 @@ def test_a_worker_dying_mid_send_never_sends_twice(ctx):
     worker.run_until_idle(ctx, now_fn=lambda: later)
     ctx.expire_all()
     assert count(ctx, PracticeMail) == 1  # one email, not two
-    assert ctx.get(Message, message.id).status == "sent"
+    assert ctx.get(Message, message.id).status in sending.ACCEPTED
     assert ctx.get(Job, job_id).attempts == 2
 
 

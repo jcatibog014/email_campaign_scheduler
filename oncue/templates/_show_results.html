@@ -1,0 +1,20 @@
+{# What happened after the emails went out: the delivery news, counted once each. #}
+<section class="card" id="results">
+  <div class="card-head"><h2>Results</h2><a class="head-link" href="{{ url_for('shows.emails_page', show_id=show.id) }}">Every email &rarr;</a></div>
+  {% set r = results %}
+  <div class="result-grid">
+    <div class="result"><p class="stat-label">Sent</p><p class="stat-value">{{ r.sent|number }}</p><p class="stat-note">of {{ r.total|number }}{% if r.dropped %}; {{ r.dropped }} dropped{% endif %}</p></div>
+    <div class="result"><p class="stat-label">Delivered</p><p class="stat-value">{{ percent(r.delivered, r.sent) }}</p><p class="stat-note">{{ r.delivered|number }} arrived</p></div>
+    <div class="result"><p class="stat-label">Opened</p><p class="stat-value">{{ percent(r.opened, r.delivered) }}</p><p class="stat-note">{{ r.opened|number }} people</p></div>
+    <div class="result"><p class="stat-label">Clicked</p><p class="stat-value">{{ percent(r.clicked, r.delivered) }}</p><p class="stat-note">{{ r.clicked|number }} people</p></div>
+    <div class="result"><p class="stat-label">Bounced</p><p class="stat-value">{{ r.bounced|number }}</p><p class="stat-note">now on do-not-send</p></div>
+    <div class="result"><p class="stat-label">Unsubscribed</p><p class="stat-value">{{ r.unsubscribed|number }}</p><p class="stat-note">{% if r.complained %}{{ r.complained }} marked as spam{% else %}none marked as spam{% endif %}</p></div>
+  </div>
+  {% if link_clicks %}
+    <h3 class="top-gap">Clicks per Link</h3>
+    <ul class="plain-list link-clicks">
+      {% for url, people in link_clicks %}<li class="list-row"><span class="grow url">{{ url }}</span><strong>{{ plural(people, 'person', 'people') }}</strong></li>{% endfor %}
+    </ul>
+  {% endif %}
+  <p class="muted small top-gap">Opens are a rough guide: some mail apps open every picture by themselves, and some never do.</p>
+</section>

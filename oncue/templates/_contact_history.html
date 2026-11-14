@@ -1,0 +1,15 @@
+{# The emails this person got, newest first (on their page in Audience). #}
+{% from "_macros.html" import message_status %}
+<section class="card">
+  <h2>Emails They Got</h2>
+  {% if history %}
+    <ul class="plain-list top-gap">
+      {% for message, show in history %}
+        <li class="list-row"><a class="grow" href="{{ url_for('shows.email_page', show_id=show.id, message_id=message.id) }}">{{ show.name }}</a>
+          <span class="muted small nowrap">{{ (message.sent_at or message.created_at)|short_date }}</span>{{ message_status(message.status) }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted top-gap">No shows have gone to them yet.</p>
+  {% endif %}
+</section>

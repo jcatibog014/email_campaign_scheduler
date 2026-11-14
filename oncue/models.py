@@ -353,6 +353,14 @@ class Message(Base):
     sent_at: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    # Delivery news (stage 6, tracking.py): the FIRST time each thing happened. News can
+    # arrive late or out of order; the status is worked out from these, never just overwritten.
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime)
+    opened_at: Mapped[datetime | None] = mapped_column(DateTime)
+    clicked_at: Mapped[datetime | None] = mapped_column(DateTime)
+    bounced_at: Mapped[datetime | None] = mapped_column(DateTime)
+    complained_at: Mapped[datetime | None] = mapped_column(DateTime)
+    unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 
 class PracticeMail(Base):
@@ -428,3 +436,35 @@ class DomainLimit(Base):
     workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"))
     domain: Mapped[str] = mapped_column(String(120))
     per_minute: Mapped[int] = mapped_column(Integer)
+
+
+# ---------- Stage 6: delivery tracking ----------
+
+class MessageEvent(Base):
+    """One piece of news about one email: delivered, opened, clicked, bounced...
+    Append-only. UNIQUE(source, event_id): a webhook sent twice is counted once."""
+    __tablename__ = "message_events"
+    __table_args__ = (UniqueConstraint("source", "event_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    message_id: Mapped[int] = mapped_column(ForeignKey("messages.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(20))
+    source: Mapped[str] = mapped_column(String(12))  # brevo / practice / pixel / click / page
+    event_id: Mapped[str] = mapped_column(String(200))
+    detail: Mapped[str] = mapped_column(String(300), default="", server_default="")
+    link_id: Mapped[int | None] = mapped_column(ForeignKey("links.id", ondelete="SET NULL"), index=True)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime)
+    received_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class Link(Base):
+    """A link in a show's email. The click address carries its id, never the URL, so
+    our click redirect can only ever send people to a link the show really has."""
+    __tablename__ = "links"
+    __table_args__ = (UniqueConstraint("show_id", "url"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    show_id: Mapped[int] = mapped_column(ForeignKey("shows.id", ondelete="CASCADE"))
+    url: Mapped[str] = mapped_column(String(2000))
