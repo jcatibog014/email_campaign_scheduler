@@ -188,3 +188,38 @@ function setUpLivePreview() {
   if (frame && frame.getAttribute("src") === "about:blank") refresh();
 }
 setUps.push(setUpLivePreview);
+
+// While a show is on Go, its page asks for the numbers every 3 seconds and moves the meter.
+// When the show changes cue (Curtain Down), the page reloads to show the new buttons.
+function setUpLiveProgress() {
+  const panel = document.querySelector("[data-live-url]");
+  if (!panel) return;
+  const meter = panel.querySelector("[data-meter]");
+  const update = async () => {
+    try {
+      const response = await fetch(panel.dataset.liveUrl, { headers: { Accept: "application/json" } });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (data.status !== panel.dataset.liveStatus) {
+        window.location.reload();
+        return;
+      }
+      if (!meter) return;
+      for (const [key, value] of Object.entries(data.meter)) {
+        const count = meter.querySelector(`[data-count="${key}"]`);
+        if (count) count.textContent = Number(value).toLocaleString("en-US");
+      }
+      for (const part of ["gone", "trouble", "retrying", "not_sent"]) {
+        const rect = meter.querySelector(`[data-part="${part}"]`);
+        if (rect) {
+          rect.setAttribute("x", data.meter[`${part}_x`]);
+          rect.setAttribute("width", data.meter[`${part}_w`]);
+        }
+      }
+    } catch (error) {
+      // A dropped connection: try again on the next tick.
+    }
+  };
+  setInterval(update, 3000);
+}
+setUps.push(setUpLiveProgress);

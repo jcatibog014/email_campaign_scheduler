@@ -249,3 +249,116 @@ class Show(Base):
     version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
 
     __mapper_args__ = {"version_id_col": version}
+
+
+# ---------- Stage 4: the job queue, the crew, performances and messages ----------
+
+class Job(Base):
+    """One piece of background work in the queue (queue.py).
+
+    status: queued -> running -> done, or back to queued for a retry, or dead
+    (a dead letter) after its last try. A running job holds a LEASE: if its
+    worker dies, the lease runs out and the reaper puts the job back.
+    dedupe_key is UNIQUE, so the same work ("start performance 7") can never
+    be queued twice, even by two workers at the same moment.
+    """
+    __tablename__ = "jobs"
+    __table_args__ = (Index("ix_jobs_status_run_at", "status", "run_at"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    workspace_id: Mapped[int | None] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(40))
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(12), default="queued", server_default="queued")
+    run_at: Mapped[datetime] = mapped_column(DateTime)
+    priority: Mapped[int] = mapped_column(Integer, default=5, server_default="5")  # lower goes first
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    max_attempts: Mapped[int] = mapped_column(Integer, default=6, server_default="6")
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime)
+    locked_by: Mapped[str | None] = mapped_column(String(80))
+    last_error: Mapped[str] = mapped_column(Text, default="", server_default="")
+    dedupe_key: Mapped[str | None] = mapped_column(String(120), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class Worker(Base):
+    """A member of the crew: a worker thread in the web app, or `flask worker`.
+    It writes last_seen every round (a heartbeat), so Backstage can tell who is
+    on duty and who has gone quiet."""
+    __tablename__ = "workers"
+
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(20))  # "in the web app" / "own process" / "timer"
+    started_at: Mapped[datetime] = mapped_column(DateTime)
+    last_seen: Mapped[datetime] = mapped_column(DateTime)
+    jobs_done: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class Performance(Base):
+    """One run of a show. A one-off show has one; a weekly show one per week."""
+    __tablename__ = "performances"
+    __table_args__ = (UniqueConstraint("show_id", "number"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    show_id: Mapped[int] = mapped_column(ForeignKey("shows.id", ondelete="CASCADE"))
+    number: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(12), default="fanning")  # fanning / sending / done / cut
+    starts_at: Mapped[datetime] = mapped_column(DateTime)
+    fanned_out: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    audience_size: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class Message(Base):
+    """One email to one person, and everything that happened to it.
+
+    UNIQUE(performance_id, contact_id): however many times the fan-out runs
+    (a retry, two workers), each person gets one message per performance.
+    send_token is the idempotency key: it is saved BEFORE the mail service is
+    called, so after a crash we can ask "did you already take this one?".
+    """
+    __tablename__ = "messages"
+    __table_args__ = (UniqueConstraint("performance_id", "contact_id"),
+                      Index("ix_messages_performance_status", "performance_id", "status"))
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    show_id: Mapped[int] = mapped_column(ForeignKey("shows.id", ondelete="CASCADE"), index=True)
+    performance_id: Mapped[int | None] = mapped_column(ForeignKey("performances.id", ondelete="CASCADE"))
+    contact_id: Mapped[int | None] = mapped_column(ForeignKey("contacts.id", ondelete="SET NULL"), index=True)
+    email: Mapped[str] = mapped_column(String(254))
+    is_test: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    status: Mapped[str] = mapped_column(String(12), default="wings", server_default="wings")
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    due_at: Mapped[datetime] = mapped_column(DateTime)
+    next_try_at: Mapped[datetime | None] = mapped_column(DateTime)
+    send_token: Mapped[str | None] = mapped_column(String(40))
+    mailer: Mapped[str] = mapped_column(String(12), default="", server_default="")
+    provider_id: Mapped[str | None] = mapped_column(String(120), index=True)
+    last_error: Mapped[str] = mapped_column(String(300), default="", server_default="")
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class PracticeMail(Base):
+    """The practice mail server's inbox: every email it took (practice_server.py).
+    idempotency_key is UNIQUE: the same send_token sent twice is taken once."""
+    __tablename__ = "practice_mail"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(40), unique=True)
+    provider_id: Mapped[str] = mapped_column(String(60), unique=True)
+    to: Mapped[str] = mapped_column(String(254))
+    subject: Mapped[str] = mapped_column(String(300))
+    html: Mapped[str] = mapped_column(Text)
+    text: Mapped[str] = mapped_column(Text)
+    headers: Mapped[dict] = mapped_column(JSON, default=dict)
+    fate: Mapped[str] = mapped_column(String(12), default="deliver", server_default="deliver")
+    accepted_at: Mapped[datetime] = mapped_column(DateTime)

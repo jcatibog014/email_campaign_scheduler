@@ -1,14 +1,14 @@
 """Shows: the list, the builder, a show's page, and the buttons that move it
 between cue states (the rules themselves are in shows.py)."""
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, g, jsonify, redirect, render_template, request, url_for
 from sqlalchemy import case, func, select
 
-from .. import audience, db, emails, shows
+from .. import audience, db, emails, sending, shows
 from ..auth import login_required
 from ..dates import from_zone, utcnow
-from ..models import Script, Show
+from ..models import Performance, Script, Show
 from . import stage
 from .scripts import merge_help, preview_choices, preview_contact, preview_response
 
@@ -191,7 +191,8 @@ def page(show_id):
                            audience_count=audience.audience_count(s, g.workspace, found.audience_kind,
                                                                   found.audience_ref),
                            problems=shows.problems(s, found, g.workspace) if found.status in shows.EDITABLE else [],
-                           preview_choices=preview_choices(s), now=utcnow(), **extras)
+                           preview_choices=preview_choices(s), now=utcnow(), soon=timedelta(minutes=10),
+                           **extras)
 
 
 @bp.get("/<int:show_id>/frame")
@@ -278,6 +279,31 @@ def delete(show_id):
     return redirect(url_for("shows.index"))
 
 
+# ---------- Progress ----------
+
+def performances_of(s, show):
+    return s.scalars(select(Performance).where(Performance.show_id == show.id)
+                     .order_by(Performance.number.desc())).all()
+
+
+def progress(s, show):
+    """The show page's progress panel: each performance (newest first) with its meter."""
+    found = performances_of(s, show)
+    rows = [(perf, sending.meter(sending.counts(s, show.id, perf.id))) for perf in found[:5]]
+    return {"progress_template": "_show_progress.html", "performances": rows,
+            "performance_count": len(found)}
+
+
+@bp.get("/<int:show_id>/progress.json")
+def progress_json(show_id):
+    """What the show page asks every few seconds while the show is on Go."""
+    s = db.session()
+    found = show_or_404(s, show_id)
+    latest = performances_of(s, found)[:1]
+    meter = sending.meter(sending.counts(s, found.id, latest[0].id)) if latest else sending.meter({})
+    return jsonify(status=found.status, meter=meter)
+
+
 # ---------- On the Stage (home page) ----------
 
 def stage_panel(s, workspace):
@@ -290,8 +316,12 @@ def stage_panel(s, workspace):
     total = s.scalar(select(func.count()).select_from(Show).where(Show.workspace_id == workspace.id))
     labels = {row.id: audience.audience_label(s, workspace, row.audience_kind, row.audience_ref)
               for row in (*live, *upcoming, *finished)}
-    return {"live": live, "upcoming": upcoming, "finished": finished, "show_total": total, "labels": labels}
+    return {"live": live, "upcoming": upcoming, "finished": finished, "show_total": total, "labels": labels,
+            "meters": sending.meters_for(s, [row.id for row in live])}
 
 
 def init_app(app):
-    stage.panels.append(("shows", stage_panel))
+    if ("shows", stage_panel) not in stage.panels:  # module lists outlive one app (tests make many)
+        stage.panels.append(("shows", stage_panel))
+    if progress not in page_extras:
+        page_extras.append(progress)
