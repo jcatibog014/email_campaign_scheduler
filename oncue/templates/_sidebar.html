@@ -1,0 +1,50 @@
+{% from "_icons.html" import logo, icon %}
+{% from "_macros.html" import avatar, csrf %}
+{% set page = request.endpoint or '' %}
+{% set section = page.split('.')[0] %}
+{# One menu entry. It shows only once its part of the app exists. #}
+{% macro link(endpoint, label, icon_name, here) %}
+  {% if has_page(endpoint) %}
+  <li><a href="{{ url_for(endpoint) }}"{% if here %} aria-current="page"{% endif %}>{{ icon(icon_name) }} {{ label }}{% if caller %}{{ caller() }}{% endif %}</a></li>
+  {% endif %}
+{% endmacro %}
+<aside class="sidebar velvet">
+  <div class="sidebar-top">
+    <a class="logo" href="{{ url_for('stage.home') }}">{{ logo(36) }} {{ APP_NAME }}</a>
+    {% if g.user.is_demo %}<span class="demo-tag" title="A sandbox: every email goes to the practice mail server.">Demo</span>{% endif %}
+    <button class="menu-button" type="button" data-menu-button aria-expanded="false" aria-controls="side-nav" hidden>
+      <span aria-hidden="true">&#9776;</span> Menu
+    </button>
+  </div>
+  <div class="sidebar-menu" id="side-nav">
+    <nav aria-label="Main">
+      <ul class="side-links">
+        {{ link('stage.home', 'Stage', 'stage', section == 'stage') }}
+        {{ link('shows.index', 'Shows', 'shows', section == 'shows') }}
+        {{ link('callboard.board', 'Call Board', 'board', section == 'callboard') }}
+        {{ link('audience.contacts', 'Audience', 'audience', section == 'audience') }}
+        {{ link('scripts.index', 'Scripts', 'scripts', section == 'scripts') }}
+        {{ link('reviews.index', 'Reviews', 'reviews', section == 'reviews') }}
+        {% call link('backstage.index', 'Backstage', 'backstage', section == 'backstage') %}{% set trouble = backstage_trouble(g.workspace) if backstage_trouble is defined else 0 %}{% if trouble %}<span class="count" title="Jobs that need you: dead letters and unsure emails">{{ trouble }}</span>{% endif %}{% endcall %}
+        {{ link('settings.page', 'Settings', 'settings', section == 'settings') }}
+      </ul>
+    </nav>
+    <div class="sidebar-foot">
+      {# <details> opens and closes without JavaScript. app.js also closes it on an outside click. #}
+      <details class="user-menu" data-popover>
+        <summary>
+          {{ avatar(g.user) }}
+          <span class="user-menu-name"><span><span class="visually-hidden">Account menu for </span>{{ g.user.name }}</span>
+            <small>{{ g.workspace.name }}</small></span>
+        </summary>
+        <div class="user-menu-items">
+          <a href="{{ url_for('settings.page') }}">Settings</a>
+          <form method="post" action="{{ url_for('auth.logout') }}">
+            {{ csrf() }}
+            <button type="submit">{{ 'Leave the demo' if g.user.is_demo else 'Log out' }}</button>
+          </form>
+        </div>
+      </details>
+    </div>
+  </div>
+</aside>

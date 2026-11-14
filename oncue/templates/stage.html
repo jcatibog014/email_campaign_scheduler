@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty %}
+{% block title %}Stage - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Stage') }}
+  {% call empty('The Stage Is Dark') %}
+    <p>Nothing is on yet. Shows you schedule will appear here, under the lights.</p>
+  {% endcall %}
+{% endblock %}

@@ -1,0 +1,9 @@
+Flask>=3.1,<4
+SQLAlchemy>=2.0,<2.1  # the ORM: models.py is the data model in Python classes
+alembic>=1.13,<2  # database migrations (flask --app oncue upgrade-db)
+psycopg[binary]>=3.2,<4  # talks to PostgreSQL (Neon) on the live site; SQLite needs nothing extra
+markdown-it-py>=3,<5  # turns a Script's Markdown into the email's HTML
+nh3>=0.2.17,<1  # cleans that HTML: only safe tags and links are kept
+tzdata>=2025.1  # time zone data (Windows doesn't have it built in): contacts' own time zones
+gunicorn>=23  # the web server on Render (Linux only; locally use "flask run")
+pytest>=8
