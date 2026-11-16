@@ -4,7 +4,7 @@ something goes wrong (Pause All Sending, Raise the Safety Curtain)."""
 from datetime import timedelta
 
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from .. import buckets, db, mailers, queue, sending, worker
 from ..auth import login_required
@@ -152,11 +152,15 @@ def unsure():
 def inbox():
     s = db.session()
     page = max(request.args.get("page", 1, type=int), 1)
+    q = request.args.get("q", "").strip()[:100]
     query = select(PracticeMail).where(PracticeMail.workspace_id == g.workspace.id)
+    if q:
+        like = f"%{q.lower().replace('%', '').replace('_', '')}%"
+        query = query.where(or_(func.lower(PracticeMail.to).like(like), func.lower(PracticeMail.subject).like(like)))
     total = s.scalar(select(func.count()).select_from(query.subquery()))
     rows = s.scalars(query.order_by(PracticeMail.accepted_at.desc(), PracticeMail.id.desc())
                      .limit(PAGE).offset((page - 1) * PAGE)).all()
-    return render("backstage_inbox.html", rows=rows, total=total, page=page, page_size=PAGE)
+    return render("backstage_inbox.html", rows=rows, total=total, page=page, page_size=PAGE, q=q)
 
 
 def mail_or_404(s, mail_id):
@@ -291,7 +295,7 @@ def stage_banner(s, workspace):
     curtain = buckets.breaker(s, workspace.id, mailer)
     down = curtain is not None and curtain.state != "closed"
     banners = []
-    if down or workspace.sending_paused:
+    if down or workspace.sending_paused or workspace.replaying:
         banners.append("_stage_banner.html")
     return {"stage_banners": banners, "curtain_down": down, "curtain": curtain, "now": utcnow(),
             "retry_soon": timedelta(minutes=1)}

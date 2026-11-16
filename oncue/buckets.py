@@ -31,19 +31,22 @@ None of these count as a try: an email waiting for a token is deferred
 (queue.Defer), not retried.
 """
 import math
+import random
 from datetime import datetime, time, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from . import mailers, queue, sending
-from .models import Breaker, Bucket, DomainLimit, SendCount
+from .models import Breaker, Bucket, DomainLimit, Job, SendCount
 
 SLOW_DOWN_FOR = timedelta(minutes=10)
 TRIP_AFTER = 10  # failures in a row
 CURTAIN_DOWN_FOR = timedelta(minutes=5)
 PROBE_GRACE = timedelta(minutes=2)  # a probe that never reported back (its worker died) is given up on
 CAS_TRIES = 8
+EPSILON = 1e-9  # floating-point dust: 0.9999999999 tokens is one token
+MIN_WAIT = 0.05  # seconds: a wait that rounds to nothing would make a job spin
 
 
 # ---------- Token buckets ----------
@@ -69,11 +72,11 @@ def take(s, key, workspace_id, capacity, rate, now):
         speed = rate / 2 if bucket.slow_until and bucket.slow_until > now else rate
         elapsed = max(0.0, (now - bucket.updated_at).total_seconds())
         tokens = min(capacity, bucket.tokens + elapsed * speed)
-        if tokens < 1:
-            return (1 - tokens) / speed
+        if tokens < 1 - EPSILON:
+            return max(MIN_WAIT, (1 - tokens) / speed)
         moved = s.execute(update(Bucket).where(Bucket.key == key, Bucket.updated_at == bucket.updated_at,
                                                Bucket.tokens == bucket.tokens)
-                          .values(tokens=tokens - 1, updated_at=max(now, bucket.updated_at))
+                          .values(tokens=max(0.0, tokens - 1), updated_at=max(now, bucket.updated_at))
                           .execution_options(synchronize_session=False))
         if moved.rowcount == 1:
             return 0
@@ -201,6 +204,27 @@ def domain_of(email):
     return email.rpartition("@")[2].lower()
 
 
+def backlog(s, workspace_id, now):
+    """How many send jobs of this workspace are waiting within the next hour. (Not only the ones
+    due this second: once spread out, those are few, and the herd would come back.)"""
+    return s.scalar(select(func.count()).select_from(Job).where(
+        Job.workspace_id == workspace_id, Job.kind == "send_message", Job.status == queue.QUEUED,
+        Job.run_at <= now + timedelta(hours=1)))
+
+
+def wait_your_turn(s, workspace_id, wait, rate, now, reason):
+    """Defer to a time spread over the whole backlog, not "everyone in 0.2 seconds".
+
+    When 100 emails are due and the bucket allows 5 a second, telling all the
+    losers to come back when the next token drips in makes them all come back
+    at once, again and again (a thundering herd): 100 job runs to send 1 email.
+    The backlog will take backlog / rate seconds anyway, so each waits a random
+    moment in that span: most then find a token on their first return."""
+    spread = (backlog(s, workspace_id, now) + 1) / max(rate, 0.01)  # + 1: this email itself
+    s.commit()
+    raise queue.Defer(now + timedelta(seconds=max(MIN_WAIT, wait) + random.uniform(0, spread)), reason)
+
+
 def before_send(s, message, workspace, contact, now):
     """Every limit, checked just before an email goes. Raises queue.Defer to wait."""
     mailer = mailers.for_workspace(workspace).name
@@ -211,12 +235,12 @@ def before_send(s, message, workspace, contact, now):
         wait = take(s, f"domain:{workspace.id}:{limit.domain}", workspace.id, max(1, limit.per_minute / 6),
                     limit.per_minute / 60, now)
         if wait:
-            s.commit()
-            raise queue.Defer(now + timedelta(seconds=wait), f"Pacing {limit.domain}: {limit.per_minute} a minute.")
+            wait_your_turn(s, workspace.id, wait, limit.per_minute / 60, now,
+                           f"Pacing {limit.domain}: {limit.per_minute} a minute.")
     wait = take(s, f"rate:{workspace.id}:{mailer}", workspace.id, workspace.send_rate, workspace.send_rate, now)
     if wait:
-        s.commit()
-        raise queue.Defer(now + timedelta(seconds=wait), f"Pacing: {workspace.send_rate:g} emails a second.")
+        wait_your_turn(s, workspace.id, wait, workspace.send_rate, now,
+                       f"Pacing: {workspace.send_rate:g} emails a second.")
     if not message.is_test and not count_one(s, workspace.id, mailer, workspace.daily_cap, now):
         s.commit()
         raise queue.Defer(tomorrow(now), f"Today's {workspace.daily_cap} emails are used up. More tomorrow.")

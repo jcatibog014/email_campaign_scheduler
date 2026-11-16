@@ -30,6 +30,6 @@ def start():
     s.commit()
     log_in(me)
     # Shown once, as a toast (_toasts.html); the small Demo tag in the menu stays.
-    flash("You are Luna, who runs Teatro Luna's emails. Everything here goes to a practice mail server, "
-          "never a real inbox. This sandbox is deleted after 24 hours.", "demo")
+    flash("You are Luna, who runs Teatro Luna's emails. Everything goes to a practice mail server, never a "
+          "real inbox. A show goes on Go in one minute: watch it on the Stage. Deleted after 24 hours.", "demo")
     return redirect(url_for("stage.home"))

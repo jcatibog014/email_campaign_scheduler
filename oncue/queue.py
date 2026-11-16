@@ -41,7 +41,7 @@ import traceback
 from dataclasses import dataclass
 from datetime import timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.exc import IntegrityError
 
 from . import db
@@ -118,9 +118,18 @@ def enqueue(s, kind, payload=None, *, run_at, workspace_id=None, priority=5, ded
 
 # ---------- Taking work out ----------
 
-def claim(s, worker_id, now, limit=10):
+def in_scope(column, workspace_id):
+    """One workspace's rows, or (for the live crew) every workspace that isn't replaying its past."""
+    from .models import Workspace
+    if workspace_id is not None:
+        return column == workspace_id
+    replaying = select(Workspace.id).where(Workspace.replaying.is_(True))
+    return or_(column.is_(None), column.not_in(replaying))
+
+
+def claim(s, worker_id, now, limit=10, workspace_id=None):
     """Take up to `limit` due jobs for this worker. Returns their ids (committed)."""
-    due = (select(Job.id).where(Job.status == QUEUED, Job.run_at <= now)
+    due = (select(Job.id).where(Job.status == QUEUED, Job.run_at <= now, in_scope(Job.workspace_id, workspace_id))
            .order_by(Job.priority, Job.run_at, Job.id).limit(limit))
     if db.is_postgres(s):
         due = due.with_for_update(skip_locked=True)
@@ -231,9 +240,9 @@ def run_job(s, job_id, worker_id, now, rng=random):
     return job.status
 
 
-def work(s, worker_id, now, limit=10, rng=random):
+def work(s, worker_id, now, limit=10, rng=random, workspace_id=None):
     """Claim due jobs and run them. Returns how many ran."""
-    ids = claim(s, worker_id, now, limit)
+    ids = claim(s, worker_id, now, limit, workspace_id)
     for job_id in ids:
         run_job(s, job_id, worker_id, now, rng)
     return len(ids)
@@ -251,6 +260,7 @@ def discard(s, job, now):
     _finish(job, DISCARDED, now)
 
 
-def next_due(s):
+def next_due(s, workspace_id=None):
     """When the next queued job is due (None if nothing is queued)."""
-    return s.scalar(select(Job.run_at).where(Job.status == QUEUED).order_by(Job.run_at).limit(1))
+    return s.scalar(select(Job.run_at).where(Job.status == QUEUED, in_scope(Job.workspace_id, workspace_id))
+                    .order_by(Job.run_at).limit(1))

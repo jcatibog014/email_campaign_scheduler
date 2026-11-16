@@ -1,10 +1,16 @@
 {% extends "base.html" %}
 {% from "_macros.html" import page_head, empty %}
+{% from "_icons.html" import icon %}
 {% block title %}Practice Inbox - Backstage - {{ APP_NAME }}{% endblock %}
 {% block content %}
   {{ page_head('Backstage') }}
   {% include "_backstage_tabs.html" %}
   <p class="muted bottom-gap">Every email the practice mail server took. Nothing here reached a real inbox.</p>
+  <form class="search-row" method="get" role="search">
+    <label class="search-box"><span class="visually-hidden">Search the inbox</span>{{ icon('search', 16) }}
+      <input type="search" name="q" value="{{ q }}" placeholder="Search by address or subject"></label>
+    <button class="button" type="submit">Search</button>
+  </form>
   {% if rows %}
     <div class="table-wrap">
       <table class="fit-table">
@@ -18,8 +24,10 @@
     </div>
     {% set last = page * page_size %}
     <div class="pager"><span class="muted small">Showing {{ (page - 1) * page_size + 1 }}&ndash;{{ [last, total]|min }} of {{ total|number }}</span>
-      {% if page > 1 %}<a class="button button-quiet button-small" href="{{ url_for('backstage.inbox', page=page - 1) }}">Previous</a>{% endif %}
-      {% if last < total %}<a class="button button-quiet button-small" href="{{ url_for('backstage.inbox', page=page + 1) }}">Next</a>{% endif %}</div>
+      {% if page > 1 %}<a class="button button-quiet button-small" href="{{ url_for('backstage.inbox', page=page - 1, q=q or none) }}">Previous</a>{% endif %}
+      {% if last < total %}<a class="button button-quiet button-small" href="{{ url_for('backstage.inbox', page=page + 1, q=q or none) }}">Next</a>{% endif %}</div>
+  {% elif q %}
+    {% call empty('Nothing Matches') %}<p>No email in the practice inbox matches "{{ q }}".</p>{% endcall %}
   {% else %}
     {% call empty('An Empty Inbox') %}<p>Send a show, or a test, and the emails the practice server takes appear here.</p>{% endcall %}
   {% endif %}

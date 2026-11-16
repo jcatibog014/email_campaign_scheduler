@@ -9,6 +9,14 @@ bp = Blueprint("stage", __name__)
 panels = []
 
 
+@bp.get("/stage/replay.json")
+@login_required
+def replay_status():
+    """The Stage asks this every few seconds while a new demo replays its past."""
+    from flask import jsonify
+    return jsonify(replaying=bool(g.workspace.replaying))
+
+
 @bp.get("/stage")
 @login_required
 def home():

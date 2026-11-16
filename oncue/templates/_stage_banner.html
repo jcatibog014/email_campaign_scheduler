@@ -1,5 +1,8 @@
 {# On the Stage: when sending is paused or the Safety Curtain is down. #}
 {% from "_macros.html" import csrf %}
+{% if g.workspace.replaying %}
+  <div class="banner banner-replay" role="status" data-replay-url="{{ url_for('stage.replay_status') }}"><div><strong>The crew is replaying Teatro Luna's last six weeks</strong> Past shows go out again through the real queue, retries and all, on a fast clock. Curtain Calls and Reviews fill in within a minute; this page reloads by itself.</div></div>
+{% endif %}
 {% if g.workspace.sending_paused %}
   <div class="banner banner-hold" role="status"><div><strong>Sending is paused</strong> Emails wait in the wings until you resume it in Backstage.</div>
     <a class="button button-small" href="{{ url_for('backstage.index') }}">Backstage</a></div>

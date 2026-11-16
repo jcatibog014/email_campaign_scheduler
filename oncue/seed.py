@@ -4,6 +4,17 @@ The demo is "Teatro Luna", a made-up community theatre that emails its
 audience. Its contacts have made-up addresses, and a demo workspace can only
 send to the practice mail server (mailers.py), so nothing a demo does ever
 reaches a real inbox. A demo is deleted 24 hours after it starts.
+
+Building it has two parts:
+1. build(), during the Try Demo click: the audience, scripts, and the shows
+   still to come. Quick.
+2. The demo's PAST (shows sent over the last six weeks, with real retries,
+   bounces, opens and clicks) is not written by hand: a demo_history job
+   REPLAYS it through the real scheduler, queue, sender and practice server,
+   on a fast clock (worker.simulate, scoped to this one workspace). While it
+   replays, workspace.replaying keeps the live crew away from it, so nothing
+   runs at the wrong time. The visitor watches Curtain Calls and Reviews fill
+   in: the background-job system demonstrating itself.
 """
 import random
 import secrets
@@ -11,8 +22,9 @@ from datetime import timedelta
 
 from sqlalchemy import delete, func, select
 
-from . import auth
-from .models import User, Workspace
+from . import auth, queue
+from .dates import utcnow
+from .models import Job, User, Workspace
 
 DEMO_LIFETIME = timedelta(hours=24)
 MAX_DEMOS = 100
@@ -60,6 +72,10 @@ def seed_audience(s, workspace, moment):
             local = f"flaky.{local}"  # the practice mail server says "try later" twice first
         if index == 29:
             local = f"slow.{local}"
+        if index == 84:
+            local = f"busy.{local}"  # always "too many": the Backstage dead letter
+        if index == 90:
+            local = f"bounce.{local}"  # taken, then bounces: the do-not-send list grows
         email = f"{local}{index if index >= len(FIRST) else ''}@{DOMAINS[index % len(DOMAINS)]}"
         days_ago = rng.randint(0, 400) if index > 6 else rng.randint(0, 20)
         plan = rng.choice(["Season pass", "Season pass", "Single tickets", "Single tickets", "Student pass"])
@@ -189,7 +205,8 @@ def add_smart_examples(s, workspace, moment, made):
                        "[See the schedule](https://teatro-luna.example/volunteers)",
                   audience_kind="list", audience_ref=str(volunteers), status="standby", repeat_days="0,3",
                   repeat_time="10:00", created_at=moment - timedelta(days=40), updated_at=moment)
-    weekly.send_at = smart.next_occurrence([0, 3], parse_clock("10:00"), workspace.time_zone, moment)
+    weekly.send_at = smart.next_occurrence([0, 3], parse_clock("10:00"), workspace.time_zone,
+                                           moment - timedelta(days=15))
     day = local_today(workspace.time_zone, moment) + timedelta(days=3)
     livestream = Show(workspace_id=workspace.id, name="Livestream for Fans Abroad",
                       subject="Watch opening night from {{city|wherever you are}}",
@@ -201,6 +218,123 @@ def add_smart_examples(s, workspace, moment, made):
                       local_date=day, local_time="19:00", created_at=moment - timedelta(days=2), updated_at=moment)
     livestream.send_at = max(smart.their_time_window(day, parse_clock("19:00"))[0], moment)
     s.add_all([weekly, livestream])
+
+
+HISTORY_DAYS = 46
+
+
+def add_live_example(s, workspace, moment):
+    """A short reminder that goes on Go one minute after the visitor arrives, so they can watch it send."""
+    from .models import Segment, Show
+    cebu = s.scalar(select(Segment.id).where(Segment.workspace_id == workspace.id, Segment.name == "Cebu and Davao"))
+    s.add(Show(workspace_id=workspace.id, name="Box Office Opens in Cebu and Davao",
+               subject="Tickets for our tour open today, {{first_name|friend}}",
+               preheader="Two nights in Cebu, one in Davao.",
+               body="Hi {{first_name|there}},\n\nTeatro Luna is **on tour**! Tickets for Cebu and Davao open today.\n\n"
+                    "[Get tickets](https://teatro-luna.example/tour)",
+               audience_kind="segment", audience_ref=str(cebu), status="standby",
+               send_at=moment + timedelta(minutes=1), created_at=moment, updated_at=moment))
+
+
+def add_past_shows(s, workspace, moment):
+    """The shows of the last six weeks, on Standby at their old times: the replay sends them."""
+    from .models import ContactList, Script, Show
+    def list_id(name):
+        return str(s.scalar(select(ContactList.id).where(ContactList.workspace_id == workspace.id,
+                                                         ContactList.name == name)))
+    programme = s.scalar(select(Script).where(Script.workspace_id == workspace.id, Script.name == "Monthly Programme"))
+    welcome = s.scalar(select(Script).where(Script.workspace_id == workspace.id, Script.name == "Welcome to the Company"))
+    def at(days, hour_manila):
+        day = (moment - timedelta(days=days)).replace(minute=0, second=0, microsecond=0)
+        return day.replace(hour=(hour_manila - 8) % 24)
+    s.add_all([
+        Show(workspace_id=workspace.id, name="October Programme", subject=programme.subject,
+             preheader=programme.preheader, body=programme.body, script_id=programme.id, audience_kind="list",
+             audience_ref=list_id("Season Subscribers"), status="standby", send_at=at(44, 9),
+             created_at=moment - timedelta(days=50)),
+        Show(workspace_id=workspace.id, name="Season Opener: Ang Huling Ilaw",
+             subject="Opening night is here, {{first_name|friend}}", preheader="The Last Light, live on our stage.",
+             body=welcome.body.replace("Thank you for joining", "Opening night is almost here at"),
+             audience_kind="all", status="standby", send_at=at(25, 10), created_at=moment - timedelta(days=30)),
+        Show(workspace_id=workspace.id, name="Workshop Sign-ups", subject="Write your first play this month",
+             subject_b="{{first_name|Friend}}, a seat is saved for you", ab_percent=30, ab_wait_hours=4,
+             ab_metric="opens", preheader="Four Saturdays, beginners welcome.",
+             body="Hi {{first_name|there}},\n\nOur **Playwriting for Beginners** workshop starts this month. "
+                  "Four Saturdays, small groups, no experience needed.\n\n[Save your seat](https://teatro-luna.example/workshops)",
+             audience_kind="list", audience_ref=list_id("Workshop News"), status="standby", send_at=at(18, 18),
+             created_at=moment - timedelta(days=20)),
+        Show(workspace_id=workspace.id, name="Thank You, Donors", subject="Because of you, the lights stay on",
+             preheader="A note from the whole company.",
+             body="Dear {{first_name|friend}},\n\nThis season happened **because of you**. Thank you.\n\n"
+                  "[See what your gift built](https://teatro-luna.example/thanks)",
+             audience_kind="tag", audience_ref="donor", status="standby", send_at=at(6, 11),
+             created_at=moment - timedelta(days=8)),
+        Show(workspace_id=workspace.id, name="Rain Delay Notice", subject="Tonight's show moves to Sunday",
+             body="Hi {{first_name|there}},\n\nThe typhoon closed the roads, so tonight's show moves to Sunday.",
+             audience_kind="all", status="cut", send_at=at(10, 15), finished_at=moment - timedelta(days=10, hours=8),
+             created_at=moment - timedelta(days=10, hours=9)),
+    ])
+
+
+def add_now_playing(s, workspace, moment):
+    """A small show that started a minute before the visitor arrived. One of its people is a
+    busy. address, so when the visitor lands it is still on Go, with a Missed Cue retrying in
+    Backstage; they can watch it end as a dead letter, and the curtain come down."""
+    from . import audience
+    from .models import Contact, ContactList, Show
+    holds = ContactList(workspace_id=workspace.id, name="Ticket Holds", is_topic=False,
+                        description="People holding tickets they haven't paid for yet.", created_at=moment)
+    s.add(holds)
+    s.flush()
+    people = s.scalars(select(Contact.id).where(Contact.workspace_id == workspace.id).order_by(Contact.id)
+                       .offset(78).limit(7)).all()  # includes the busy. address (contact 84)
+    audience.add_to_list(s, holds.id, people, moment)
+    s.add(Show(workspace_id=workspace.id, name="Ticket Holds Expire Tonight",
+               subject="Your held seats are waiting, {{first_name|friend}}",
+               preheader="Pay by 6 PM to keep them.",
+               body="Hi {{first_name|there}},\n\nYour seats for Saturday are **held until 6 PM tonight**.\n\n"
+                    "[Pay for your tickets](https://teatro-luna.example/holds)",
+               audience_kind="list", audience_ref=str(holds.id), status="standby",
+               send_at=moment - timedelta(minutes=1), created_at=moment - timedelta(hours=2)))
+
+
+def stage_unsure_example(s, workspace, moment):
+    """One Unsure email for Backstage. The practice server remembers every send_token, so a real crash
+    can't leave one (see sending.py); this example is set by hand, as Brevo would leave it."""
+    from .models import Message, MessageEvent, Show
+    message = s.scalar(select(Message).join(Show, Show.id == Message.show_id)
+                       .where(Message.workspace_id == workspace.id, Show.name == "Thank You, Donors",
+                              Message.status == "delivered").order_by(Message.id).limit(1))
+    if message is None:
+        return
+    s.execute(delete(MessageEvent).where(MessageEvent.message_id == message.id))
+    message.status, message.delivered_at, message.opened_at, message.clicked_at = "unsure", None, None, None
+    message.last_error = ("The worker stopped while sending, and the mail service can't tell us whether it took the "
+                          "email. Check before you resend it.")
+
+
+@queue.handler("demo_history")
+def replay_history(s, job, now):
+    """Replay a new demo's last six weeks through the real crew, on a fast clock."""
+    from . import worker
+    workspace = s.get(Workspace, job.payload["workspace_id"])
+    if workspace is None or not workspace.replaying:
+        return
+    moment = workspace.created_at
+    add_past_shows(s, workspace, moment)
+    add_now_playing(s, workspace, moment)
+    s.commit()
+    worker_id, workspace_id, job_id = job.locked_by, workspace.id, job.id
+
+    def keep_lease():
+        queue.heartbeat(s, s.get(Job, job_id), worker_id, utcnow())
+
+    worker.simulate(s, moment - timedelta(days=HISTORY_DAYS), utcnow(), worker_id=f"replay-{workspace_id}",
+                    workspace_id=workspace_id, on_round=keep_lease)
+    workspace = s.get(Workspace, workspace_id)
+    stage_unsure_example(s, workspace, moment)
+    workspace.replaying = False  # the live crew takes over from here
+    s.get(Job, job_id)  # the job is reloaded after the simulation's commits
 
 
 def people_with(people, tag):
@@ -220,6 +354,10 @@ def build(s, moment):
                             session_version=secrets.randbelow(10**9) + 2, created_at=moment)
     seed_audience(s, workspace, moment)
     seed_scripts_and_shows(s, workspace, moment)
+    add_live_example(s, workspace, moment)
+    workspace.replaying = True
+    queue.enqueue(s, "demo_history", {"workspace_id": workspace.id}, run_at=moment, priority=1,
+                  dedupe_key=f"demo-history:{workspace.id}")
     return user
 
 

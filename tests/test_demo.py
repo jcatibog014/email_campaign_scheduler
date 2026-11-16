@@ -65,6 +65,41 @@ def test_the_demo_has_scripts_and_shows(app):
     assert "As a Season pass holder" in text(frame) or "friend of the theatre" in text(frame)
 
 
+def test_the_replayed_past_fills_every_page(app):
+    """After the demo_history job, nothing the demo can open is an empty stage."""
+    from oncue import worker
+    from oncue.models import Contact as ContactModel, Job, Message
+    client = start_demo(app)
+    assert "replaying Teatro Luna" in text(client.get("/stage"))
+    with app.app_context():
+        s = db.session()
+        workspace_id = s.scalar(select(Workspace.id).where(Workspace.is_demo.is_(True)))
+        # The live crew leaves a replaying demo alone: its jobs aren't claimable by anyone else.
+        assert s.scalar(select(Job.kind).where(Job.workspace_id.is_(None))) == "demo_history"
+        worker.run_until_idle(s, worker_id="live")
+        workspace = s.get(Workspace, workspace_id)
+        assert workspace.replaying is False
+        finished = s.scalar(select(Show).where(Show.workspace_id == workspace_id, Show.name == "Season Opener: Ang Huling Ilaw"))
+        assert finished.status == "curtain_down"
+        message = s.scalar(select(Message).where(Message.show_id == finished.id).order_by(Message.id))
+        contact_with_history = s.scalar(select(ContactModel.id).where(ContactModel.id == message.contact_id))
+        weekly = s.scalar(select(Show.id).where(Show.workspace_id == workspace_id, Show.name == "Volunteer Call Sheet"))
+    assert "replaying Teatro Luna" not in text(client.get("/stage"))
+    pages = {
+        "/stage": "Ticket Holds Expire Tonight", "/shows/": "Season Opener", "/shows/?tab=done": "October Programme",
+        "/shows/?tab=cut": "Rain Delay Notice", f"/shows/{finished.id}": "Results",
+        f"/shows/{finished.id}/emails": "Every Email", f"/shows/{finished.id}/emails/{message.id}": "What Happened",
+        f"/shows/{weekly}": "Every Monday, Thursday", "/call-board/": "Call Board", "/call-board/?view=month": "Volunteer",
+        "/reviews/": "Delivery Funnel", "/backstage/": "The Crew", "/backstage/dead-letters": "Retry now",
+        "/backstage/unsure": "Resend", "/backstage/inbox": "Practice", "/backstage/retries": "Missed",
+        f"/audience/{contact_with_history}": "Emails They Got", "/settings": "Practice Mail Server",
+    }
+    for path, expected in pages.items():
+        response = client.get(path)
+        assert response.status_code == 200 and expected in text(response), path
+        assert 'class="empty' not in text(response), path
+
+
 def test_one_network_can_start_ten_demos_an_hour(app, monkeypatch):
     from oncue import seed as seed_module
     monkeypatch.setattr(seed_module, "seed_audience", lambda *args: None)  # quick demos for this test

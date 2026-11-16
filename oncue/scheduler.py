@@ -31,9 +31,11 @@ on_start = []
 batch_rules = []
 
 
-def run_due(s, now):
+def run_due(s, now, workspace_id=None):
     """Start every show whose time has come. Returns how many started."""
-    due = s.scalars(select(Show).where(Show.status == shows.STANDBY, Show.send_at <= now)
+    from .queue import in_scope
+    due = s.scalars(select(Show).where(Show.status == shows.STANDBY, Show.send_at <= now,
+                                       in_scope(Show.workspace_id, workspace_id))
                     .order_by(Show.send_at).limit(DUE_PER_ROUND)).all()
     started = 0
     for show in due:

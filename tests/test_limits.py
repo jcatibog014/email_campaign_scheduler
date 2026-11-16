@@ -59,6 +59,29 @@ def test_a_bucket_allows_a_burst_then_a_steady_pace(ctx):
     assert buckets.take(ctx, "k", None, capacity=2, rate=1, now=T0 + timedelta(seconds=1)) == 0
 
 
+def test_floating_point_dust_never_makes_a_job_spin(ctx):
+    """0.9999999999 tokens is a token; and a wait is never so small that it rounds to nothing."""
+    from oncue.models import Bucket
+    ctx.add(Bucket(key="dust", tokens=0.9999999999, updated_at=T0))
+    ctx.commit()
+    assert buckets.take(ctx, "dust", None, capacity=5, rate=5, now=T0) == 0
+    ctx.add(Bucket(key="almost", tokens=0.99999, updated_at=T0))
+    ctx.commit()
+    assert buckets.take(ctx, "almost", None, capacity=5, rate=5, now=T0) >= buckets.MIN_WAIT
+
+
+def test_a_big_backlog_doesnt_stampede(ctx, monkeypatch):
+    """100 emails due at once at 5 a second: waiting emails are spread over the backlog,
+    so each is deferred about once, not again and again (a thundering herd)."""
+    defers = []
+    real_defer = queue.defer
+    monkeypatch.setattr(queue, "defer", lambda job, until, reason="": (defers.append(job.id), real_defer(job, until, reason)))
+    _workspace, show = setup(ctx, [f"p{i}@example.com" for i in range(100)])
+    worker.simulate(ctx, T0, T0 + timedelta(minutes=5))
+    assert statuses(ctx, show.id) == {"sent": 100}
+    assert len(defers) < 200  # about once each; before the spread it was over 2,000
+
+
 def test_two_workers_never_spend_the_same_token(app):
     """50 tokens, two threads grabbing at once: exactly 50 grabs succeed (compare-and-swap)."""
     with app.app_context():

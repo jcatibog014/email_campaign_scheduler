@@ -47,6 +47,8 @@ class Workspace(Base):
     quiet_end: Mapped[int | None] = mapped_column(Integer)
     # Backstage's Pause All Sending switch (stage 8): nothing goes out until it is off.
     sending_paused: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # True while a new demo's past is being replayed (seed.py): the live crew leaves it alone.
+    replaying: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     users: Mapped[list["User"]] = relationship(back_populates="workspace", cascade="all, delete-orphan",
                                                passive_deletes=True)

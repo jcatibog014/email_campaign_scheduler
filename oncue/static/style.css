@@ -731,3 +731,4 @@ input[type="number"] { max-width: 12rem; }
 .dead-list form { margin: 0; }
 .error-text { color: var(--danger); overflow-wrap: anywhere; }
 .plain-text { white-space: pre-wrap; font-size: .82rem; background: var(--surface-soft); padding: .8rem; border-radius: var(--radius); max-height: 24rem; overflow: auto; }
+.banner-replay { background: var(--cue-go-bg); color: var(--cue-go-ink); border-color: color-mix(in srgb, var(--cue-go-lamp) 40%, transparent); }

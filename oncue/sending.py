@@ -40,6 +40,9 @@ before_send = []
 after_send = []
 # Ways to make the email's links and tracking pixel (stage 6): function(message) -> (link_wrapper, pixel_url)
 tracking = []
+# After an email is recorded as Sent: function(s, message, now). (tracking.py hands over a replaying
+# demo's planned practice news here, once the message has its provider id.)
+on_sent = []
 # What to do when a performance finishes (stage 7: a weekly show goes back on Standby): function(s, show, perf, now)
 on_finished = []
 
@@ -143,6 +146,8 @@ def send_message(s, job, now):
     if isinstance(result, mailers.Accepted):
         message.provider_id, message.sent_at, message.next_try_at = result.provider_id, now, None
         set_status(message, SENT, now, "")
+        for hook in on_sent:
+            hook(s, message, now)
         finish_if_done(s, message, now)
     elif isinstance(result, mailers.Rejected):
         set_status(message, DROPPED, now, result.reason)

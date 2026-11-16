@@ -120,4 +120,14 @@ Menu: **Stage** (home), **Shows**, **Call Board** (schedule calendar), **Audienc
 - [x] Stage 6: Delivery tracking
 - [x] Stage 7: Smart sending
 - [x] Stage 8: Reviews and Backstage
-- [ ] Stage 9: Demo, phone app, deploy, README
+- [x] Stage 9: Demo, phone app, deploy, README
+
+## Where the Build Differs from the Plan
+
+- **Send a Test** came in stage 5 (it needs the mailers), not stage 3.
+- **Console mailer:** not built. The practice mail server does that job, with an inbox in Backstage.
+- **The timer** runs every 30 minutes, not 15: each call wakes the free Neon database. The worker also sleeps until the next due job or show, for the same reason.
+- **The demo's past** is replayed by a background job after the Try Demo click (watched on the Stage), not inside the click: on Render + Neon it takes too long for one request. While it replays, the live crew leaves that workspace alone.
+- **Pacing:** emails waiting for a rate-limit token are spread over the whole backlog, so they don't all come back at the same moment (a thundering herd found while building the replay).
+- **The demo keeps quiet hours off**, so Start now sends at any hour; quiet hours are one switch away in Settings.
+- Added along the way: Pause All Sending, a search box in the Practice Inbox, a Ticket Holds show that is on Go (with a retry) when a demo starts.

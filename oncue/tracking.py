@@ -190,6 +190,13 @@ def practice_news(s, mail, slow, now):
             plan.append((OPENED, opened, ""))
             if dice.random() < 0.32:
                 plan.append((CLICKED, opened + dice.uniform(10, 600), ""))
+    from .models import Workspace
+    if s.get(Workspace, mail.workspace_id).replaying:
+        # A demo replaying its past (seed.py): this news is already history, so it is recorded as soon
+        # as the sender has saved the email as Sent (news_after_sent), through the same record(),
+        # instead of as jobs for later. That saves two thirds of the replay's jobs.
+        s.info.setdefault("planned_news", {})[mail.provider_id] = (mail, plan, now)
+        return
     for kind, delay, detail in plan:
         queue.enqueue(s, "practice_event", {"mail_id": mail.id, "kind": kind, "detail": detail},
                       run_at=now + timedelta(seconds=delay), workspace_id=mail.workspace_id, priority=7,
@@ -204,7 +211,12 @@ def practice_event(s, job, now):
     message = s.scalar(select(Message).where(Message.provider_id == mail.provider_id))
     if message is None:
         return
-    kind, link_id, detail = job.payload["kind"], None, job.payload.get("detail", "")
+    deliver_news(s, mail, message, job.payload["kind"], job.payload.get("detail", ""), job.run_at, now)
+
+
+def deliver_news(s, mail, message, kind, detail, occurred_at, now):
+    """One piece of the practice server's news, recorded like any other."""
+    link_id = None
     if kind == CLICKED:
         links = s.scalars(select(Link).where(Link.show_id == message.show_id).order_by(Link.id)).all()
         if not links:
@@ -212,11 +224,21 @@ def practice_event(s, job, now):
         else:
             link = random.Random(mail.provider_id).choice(links)
             link_id, detail = link.id, link.url
-    record(s, message, kind, "practice", f"{mail.provider_id}:{kind}", job.run_at, detail, link_id, now)
+    record(s, message, kind, "practice", f"{mail.provider_id}:{kind}", occurred_at, detail, link_id, now)
     sending.finish_if_done(s, message, now)
 
 
+def news_after_sent(s, message, now):
+    planned = s.info.get("planned_news", {}).pop(message.provider_id, None)
+    if planned is not None:
+        mail, plan, accepted = planned
+        for kind, delay, detail in plan:
+            deliver_news(s, mail, message, kind, detail, accepted + timedelta(seconds=delay), now)
+
+
 def init_app(app):
+    if news_after_sent not in sending.on_sent:
+        sending.on_sent.append(news_after_sent)
     if make_tracking not in sending.tracking:
         sending.tracking.append(make_tracking)
     if practice_news not in practice_server.after_accept:

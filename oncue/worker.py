@@ -65,21 +65,24 @@ def sign_off(s, worker_id, now):
     s.commit()
 
 
-def run_round(s, worker_id, now, rng=random):
+def run_round(s, worker_id, now, rng=random, workspace_id=None):
     """One round. Returns how many jobs ran."""
     s.expire_all()  # read everything fresh: pages change shows between rounds
-    queue.reap(s, now)
-    scheduler.run_due(s, now)
-    done = queue.work(s, worker_id, now, JOBS_PER_ROUND, rng)
+    if workspace_id is None:
+        queue.reap(s, now)  # leases are real time: only the live crew checks them
+    scheduler.run_due(s, now, workspace_id)
+    done = queue.work(s, worker_id, now, JOBS_PER_ROUND, rng, workspace_id)
     beat(s, worker_id, now, done)
     return done
 
 
-def next_event(s, now):
+def next_event(s, now, workspace_id=None):
     """When something will next need a worker: a queued job, a show on Standby, a lease to check."""
     moments = [
-        queue.next_due(s),
-        s.scalar(select(Show.send_at).where(Show.status == shows.STANDBY).order_by(Show.send_at).limit(1)),
+        queue.next_due(s, workspace_id),
+        s.scalar(select(Show.send_at).where(Show.status == shows.STANDBY,
+                                            queue.in_scope(Show.workspace_id, workspace_id))
+                 .order_by(Show.send_at).limit(1)),
         s.scalar(select(Job.lease_until).where(Job.status == queue.RUNNING).order_by(Job.lease_until).limit(1)),
     ]
     moments = [moment for moment in moments if moment is not None]
@@ -160,7 +163,7 @@ def run_until_idle(s, worker_id="timer", now_fn=utcnow, max_rounds=500, budget_s
     return total
 
 
-def simulate(s, start, until, worker_id="rehearsal", rng=None):
+def simulate(s, start, until, worker_id="rehearsal", rng=None, workspace_id=None, on_round=None):
     """Play the queue forward in time, jumping from one due moment to the next,
     without waiting for real seconds. Tests use it ("an hour later, the third
     retry went out"), and so does the demo, to play past shows. Returns the
@@ -169,9 +172,11 @@ def simulate(s, start, until, worker_id="rehearsal", rng=None):
     register(s, worker_id, "rehearsal", start)
     now = start
     while now <= until:
-        if run_round(s, worker_id, now, rng):
+        if on_round:
+            on_round()  # e.g. keep a long job's lease (the demo's replay)
+        if run_round(s, worker_id, now, rng, workspace_id):
             continue
-        upcoming = next_event(s, now)
+        upcoming = next_event(s, now, workspace_id)
         if upcoming is None or upcoming > until:
             break
         now = max(now, upcoming)
