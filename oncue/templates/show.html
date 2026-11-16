@@ -24,8 +24,15 @@
         <div class="card-head"><h2>Cue</h2>{{ show_status(show.status) }}</div>
         <p class="cue-note">{{ show_cue(show.status).note }}</p>
         {% if show.status == 'standby' %}
-          <p class="big-time">{{ show.send_at|nice_datetime }} <span class="muted">({{ show.send_at|from_now }})</span></p>
+          {% if show.send_mode == 'their_time' %}
+            <p class="big-time">{{ show.local_time }} in each person's own time zone, {{ show.local_date|short_date }}</p>
+            <p class="muted small">The first emails go {{ show.send_at|nice_datetime }} ({{ show.send_at|from_now }}), where the day starts first. People for whom it is already later get theirs straight away.</p>
+          {% else %}
+            <p class="big-time">{{ show.send_at|nice_datetime }} <span class="muted">({{ show.send_at|from_now }})</span></p>
+          {% endif %}
+          {% if repeat_label %}<p class="repeat-line">{{ icon('repeat', 16) }} {{ repeat_label }}</p>{% endif %}
         {% elif show.started_at %}
+          {% if repeat_label %}<p class="repeat-line">{{ icon('repeat', 16) }} {{ repeat_label }}. After this performance it goes back on Standby.</p>{% endif %}
           <p class="muted small">Started {{ show.started_at|nice_datetime }}{% if show.finished_at %}; finished {{ show.finished_at|nice_datetime }}{% endif %}.</p>
         {% endif %}
         {% block progress %}{% if progress_template is defined %}{% include progress_template %}{% endif %}{% endblock %}
@@ -36,14 +43,51 @@
 
         <div class="show-actions">
           {% if show.status in ('rehearsal', 'standby') and not problems %}
-            <form class="schedule-form" method="post" action="{{ url_for('shows.schedule', show_id=show.id) }}">
-              {{ csrf() }}<input type="hidden" name="version" value="{{ show.version }}">
-              <label class="field"><span class="field-label">{{ 'Change the time' if show.status == 'standby' else 'Send at' }} <span class="hint">{{ g.workspace.time_zone.replace('_', ' ') }} time</span></span>
-                <input type="datetime-local" name="send_at" value="{{ (show.send_at or now)|iso_local }}" required></label>
-              <button class="button" type="submit">{{ icon('clock', 16) }} {{ 'Save time' if show.status == 'standby' else 'Schedule' }}</button>
-            </form>
+            {# Three ways to schedule, each its own small form. The one in use is open. #}
+            {% set mode = 'weekly' if show.repeats else show.send_mode %}
+            <div class="schedule-modes">
+              <details class="fold"{% if mode == 'at_once' %} open{% endif %}>
+                <summary>Once, at one time</summary>
+                <form class="schedule-form" method="post" action="{{ url_for('shows.schedule', show_id=show.id) }}">
+                  {{ csrf() }}<input type="hidden" name="version" value="{{ show.version }}"><input type="hidden" name="mode" value="once">
+                  <label class="field"><span class="field-label">Send at <span class="hint">{{ g.workspace.time_zone.replace('_', ' ') }} time</span></span>
+                    <input type="datetime-local" name="send_at" value="{{ (show.send_at or now)|iso_local }}" required></label>
+                  <button class="button" type="submit">{{ icon('clock', 16) }} {{ 'Save time' if show.status == 'standby' and mode == 'at_once' else 'Schedule' }}</button>
+                </form>
+              </details>
+              {% if not show.is_ab %}
+                <details class="fold"{% if mode == 'their_time' %} open{% endif %}>
+                  <summary>Once, at a time in each person's own time zone</summary>
+                  <form class="schedule-form" method="post" action="{{ url_for('shows.schedule', show_id=show.id) }}">
+                    {{ csrf() }}<input type="hidden" name="version" value="{{ show.version }}"><input type="hidden" name="mode" value="their_time">
+                    <label class="field"><span class="field-label">Day</span>
+                      <input type="date" name="local_date" value="{{ show.local_date|day_iso if show.local_date else (now|iso_local)[:10] }}" required></label>
+                    <label class="field"><span class="field-label">Their time</span>
+                      <input type="time" name="local_time" value="{{ show.local_time or '09:00' }}" required></label>
+                    <button class="button" type="submit">{{ icon('clock', 16) }} Schedule</button>
+                  </form>
+                  <p class="muted small">"9:00 AM" means 9:00 in Manila for people in Manila and 9:00 in London for people in London. People without a time zone use {{ g.workspace.time_zone.replace('_', ' ') }}.</p>
+                </details>
+                <details class="fold"{% if mode == 'weekly' %} open{% endif %}>
+                  <summary>Every week</summary>
+                  <form class="schedule-form weekly-form" method="post" action="{{ url_for('shows.schedule', show_id=show.id) }}">
+                    {{ csrf() }}<input type="hidden" name="version" value="{{ show.version }}"><input type="hidden" name="mode" value="weekly">
+                    <fieldset class="choices day-choices">
+                      <legend>On</legend>
+                      {% for day in weekdays %}<label class="check"><input type="checkbox" name="repeat_days" value="{{ loop.index0 }}"{% if loop.index0 in repeat_days %} checked{% endif %}> {{ day[:3] }}</label>{% endfor %}
+                    </fieldset>
+                    <label class="field"><span class="field-label">At <span class="hint">{{ g.workspace.time_zone.replace('_', ' ') }} time</span></span>
+                      <input type="time" name="repeat_time" value="{{ show.repeat_time or '09:00' }}" required></label>
+                    <button class="button" type="submit">{{ icon('repeat', 16) }} Repeat weekly</button>
+                  </form>
+                </details>
+              {% else %}
+                <p class="muted small">An A/B test goes to everyone at one moment, once, so it can't use their own time zones or repeat.</p>
+              {% endif %}
+            </div>
             {{ button('shows.start', 'Start now', 'button-go', confirm='Send ' ~ show.name ~ ' to ' ~ audience_count ~ ' people now?', icon_name='play') }}
           {% endif %}
+          {% if show.repeats and show.status in ('standby', 'go', 'hold') %}{{ button('shows.stop_repeating', 'Stop repeating') }}{% endif %}
           {% if show.status == 'standby' %}{{ button('shows.unschedule', 'Back to rehearsal') }}{% endif %}
           {% if show.status == 'go' %}{{ button('shows.hold', 'Hold', icon_name='pause') }}{% endif %}
           {% if show.status == 'hold' %}{{ button('shows.resume', 'Resume', 'button-go', icon_name='play') }}{% endif %}

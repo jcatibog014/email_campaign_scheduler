@@ -7,9 +7,9 @@ demo can never see or touch the owner's audience, shows or jobs.
 Times are naive UTC (dates.utcnow()). Ids of workspaces and users are never
 reused (sqlite_autoincrement), so an old demo cookie can't open a newer demo.
 """
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, false, true
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, false, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .dates import DEFAULT_ZONE, utcnow
@@ -41,6 +41,10 @@ class Workspace(Base):
     practice_timeout: Mapped[int] = mapped_column(Integer, default=3, server_default="3")
     practice_bounce: Mapped[int] = mapped_column(Integer, default=3, server_default="3")
     practice_slow: Mapped[int] = mapped_column(Integer, default=10, server_default="10")
+    # Quiet hours (stage 7, smart.py): no email between these times in each person's own
+    # time zone. Minutes after midnight; None = no quiet hours.
+    quiet_start: Mapped[int | None] = mapped_column(Integer)
+    quiet_end: Mapped[int | None] = mapped_column(Integer)
 
     users: Mapped[list["User"]] = relationship(back_populates="workspace", cascade="all, delete-orphan",
                                                passive_deletes=True)
@@ -256,8 +260,31 @@ class Show(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    # Smart sending (stage 7, smart.py).
+    # "at_once": everyone at send_at. "their_time": at local_time on local_date in EACH
+    # person's own time zone (send_at is then the earliest of those moments, in UTC+14).
+    send_mode: Mapped[str] = mapped_column(String(12), default="at_once", server_default="at_once")
+    local_date: Mapped[date | None] = mapped_column(Date)
+    local_time: Mapped[str | None] = mapped_column(String(5))
+    # An A/B subject test: ab_percent of the audience get A or B; after ab_wait_hours the
+    # subject with more opens (or clicks) goes to everyone else.
+    subject_b: Mapped[str | None] = mapped_column(String(200))
+    ab_percent: Mapped[int] = mapped_column(Integer, default=20, server_default="20")
+    ab_wait_hours: Mapped[int] = mapped_column(Integer, default=4, server_default="4")
+    ab_metric: Mapped[str] = mapped_column(String(8), default="opens", server_default="opens")
+    # A weekly show: on these weekdays ("0,3" = Monday and Thursday) at this time.
+    repeat_days: Mapped[str | None] = mapped_column(String(20))
+    repeat_time: Mapped[str | None] = mapped_column(String(5))
 
     __mapper_args__ = {"version_id_col": version}
+
+    @property
+    def is_ab(self):
+        return bool(self.subject_b)
+
+    @property
+    def repeats(self):
+        return bool(self.repeat_days)
 
 
 # ---------- Stage 4: the job queue, the crew, performances and messages ----------
@@ -321,6 +348,8 @@ class Performance(Base):
     audience_size: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    ab_decide_at: Mapped[datetime | None] = mapped_column(DateTime)
+    ab_winner: Mapped[str | None] = mapped_column(String(1))
 
 
 class Message(Base):
@@ -342,6 +371,7 @@ class Message(Base):
     contact_id: Mapped[int | None] = mapped_column(ForeignKey("contacts.id", ondelete="SET NULL"), index=True)
     email: Mapped[str] = mapped_column(String(254))
     is_test: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    variant: Mapped[str | None] = mapped_column(String(1))  # "a" or "b" in an A/B test
     status: Mapped[str] = mapped_column(String(12), default="wings", server_default="wings")
     attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     due_at: Mapped[datetime] = mapped_column(DateTime)

@@ -5,9 +5,9 @@ from datetime import datetime, timedelta
 from flask import Blueprint, abort, flash, g, jsonify, redirect, render_template, request, url_for
 from sqlalchemy import case, func, select
 
-from .. import audience, buckets, db, emails, limits, mailers, results, sending, shows, tracking
+from .. import audience, buckets, db, emails, limits, mailers, results, sending, shows, smart, tracking
 from ..auth import login_required
-from ..dates import from_zone, utcnow
+from ..dates import from_zone, parse_clock, utcnow
 from ..models import Contact, Message, Performance, Script, Show
 from . import stage
 from .scripts import merge_help, preview_choices, preview_contact, preview_response
@@ -116,6 +116,22 @@ def builder(found):
         kind, ref = audience.parse_audience(values["audience"])
         if kind is None or audience.audience_condition(s, g.workspace, kind, ref) is None:
             errors["audience"] = "Choose who gets it."
+        # The A/B subject test.
+        values["ab_on"] = form.get("ab_on") == "yes"
+        values["subject_b"] = " ".join(form.get("subject_b", "").split())
+        values["ab_percent"] = form.get("ab_percent", type=int) or 20
+        values["ab_wait_hours"] = form.get("ab_wait_hours", type=int) or 4
+        values["ab_metric"] = "clicks" if form.get("ab_metric") == "clicks" else "opens"
+        if values["ab_on"]:
+            if not values["subject_b"] or len(values["subject_b"]) > shows.SUBJECT_MAX:
+                errors["subject_b"] = "Write subject B (up to 200 characters), or turn the test off."
+            elif values["subject_b"] == values["subject"]:
+                errors["subject_b"] = "Subject B must be different from subject A."
+            elif values["ab_percent"] not in smart.AB_PERCENTS or values["ab_wait_hours"] not in smart.AB_WAITS:
+                errors["subject_b"] = "Choose the test's size and waiting time from the lists."
+            elif found is not None and (found.repeats or found.send_mode == "their_time"):
+                errors["subject_b"] = ("An A/B test needs everyone sent at the same moment, once. "
+                                       "Schedule it once, at one time, first.")
         if found is not None:
             try:
                 check_version(found)
@@ -132,6 +148,9 @@ def builder(found):
             found.name, found.subject, found.preheader, found.body = (values["name"], values["subject"],
                                                                       values["preheader"], values["body"])
             found.audience_kind, found.audience_ref = kind, None if ref is None else str(ref)
+            found.subject_b = values["subject_b"] if values["ab_on"] else None
+            found.ab_percent, found.ab_wait_hours, found.ab_metric = (values["ab_percent"], values["ab_wait_hours"],
+                                                                      values["ab_metric"])
             found.updated_at = moment
             if found.status == shows.STANDBY and (problems := shows.problems(s, found, g.workspace)):
                 s.rollback()
@@ -147,7 +166,9 @@ def builder(found):
     else:
         if found is not None:
             values = {"name": found.name, "subject": found.subject, "preheader": found.preheader, "body": found.body,
-                      "audience": found.audience_kind + (f":{found.audience_ref}" if found.audience_ref else "")}
+                      "audience": found.audience_kind + (f":{found.audience_ref}" if found.audience_ref else ""),
+                      "ab_on": found.is_ab, "subject_b": found.subject_b or "", "ab_percent": found.ab_percent,
+                      "ab_wait_hours": found.ab_wait_hours, "ab_metric": found.ab_metric}
         elif script is not None:
             values = {"name": script.name, "subject": script.subject, "preheader": script.preheader,
                       "body": script.body, "audience": "all"}
@@ -155,7 +176,11 @@ def builder(found):
             values = {"name": "", "subject": "", "preheader": "", "body": "Hi {{first_name|there}},\n\n",
                       "audience": "all"}
     scripts = s.scalars(select(Script).where(Script.workspace_id == g.workspace.id).order_by(Script.name)).all()
+    for key, default in (("ab_on", False), ("subject_b", ""), ("ab_percent", 20), ("ab_wait_hours", 4),
+                         ("ab_metric", "opens")):
+        values.setdefault(key, default)
     return render_template("show_form.html", found=found, values=values, errors=errors, choices=choices,
+                           ab_percents=smart.AB_PERCENTS, ab_waits=smart.AB_WAITS,
                            scripts=scripts, script=script, preview_choices=preview_choices(s),
                            **merge_help(s, (values.get("subject", ""), values.get("body", "")))), \
         400 if errors else 200
@@ -206,12 +231,44 @@ def frame(show_id):
 
 @bp.post("/<int:show_id>/schedule")
 def schedule(show_id):
+    """Three ways: once at a time; once at a time in each person's own zone; every week."""
     def action(s, found, moment):
+        mode = request.form.get("mode", "once")
+        if mode == "their_time":
+            try:
+                day = datetime.strptime(request.form.get("local_date", ""), "%Y-%m-%d").date()
+            except ValueError:
+                raise shows.ShowError("Choose a date.") from None
+            clock = parse_clock(request.form.get("local_time"))
+            if clock is None:
+                raise shows.ShowError("Choose a time.")
+            smart.schedule_their_time(s, found, g.workspace, day, clock, moment)
+            return f"{found.name} is on Standby: {request.form.get('local_time')} in each person's own time zone."
+        if mode == "weekly":
+            clock = parse_clock(request.form.get("repeat_time"))
+            if clock is None:
+                raise shows.ShowError("Choose a time.")
+            smart.schedule_weekly(s, found, g.workspace, smart.parse_days(request.form.getlist("repeat_days")),
+                                  clock, moment)
+            return f"{found.name} is on Standby: {smart.describe_repeat(found).lower()}."
         send_at = parse_local(request.form.get("send_at"))
         if send_at is None:
             raise shows.ShowError("Choose a date and time.")
+        found.send_mode, found.local_date, found.local_time = "at_once", None, None
+        smart.stop_repeating(found)
         shows.schedule(s, found, g.workspace, send_at, moment)
         return f"{found.name} is on Standby."
+    return act(show_id, action)
+
+
+@bp.post("/<int:show_id>/stop-repeating")
+def stop_repeating(show_id):
+    def action(s, found, moment):
+        if not found.repeats:
+            raise shows.ShowError("This show doesn't repeat.")
+        smart.stop_repeating(found)
+        found.updated_at = moment
+        return f"{found.name} won't repeat. Its next time stays as a one-off."
     return act(show_id, action)
 
 
@@ -298,9 +355,16 @@ def progress(s, show):
         estimate = buckets.finish_estimate(s, g.workspace, mailer, waiting, utcnow()) if waiting else None
     tests = s.scalars(select(Message).where(Message.show_id == show.id, Message.is_test.is_(True))
                       .order_by(Message.created_at.desc()).limit(5)).all()
+    ab = None
+    if show.is_ab:
+        latest = found[0] if found else None
+        ab = {"perf": latest, "numbers": smart.ab_numbers(s, latest.id) if latest else None}
     return {"progress_template": "_show_progress.html", "performances": rows, "performance_count": len(found),
-            "estimate": estimate, "tests": tests,
-            "show_sections": (["_show_results.html"] if found else []) + ["_show_test.html"],
+            "estimate": estimate, "tests": tests, "ab": ab, "weekdays": smart.WEEKDAYS,
+            "repeat_label": smart.describe_repeat(show) if show.repeats else None,
+            "repeat_days": smart.days_of(show),
+            "show_sections": (["_show_ab.html"] if show.is_ab else []) + (["_show_results.html"] if found else [])
+            + ["_show_test.html"],
             "results": results.for_show(s, show.id) if found else None,
             "link_clicks": results.link_clicks(s, show.id) if found else [],
             "test_address": g.user.email if not g.user.is_demo else "luna@teatro-luna.example"}

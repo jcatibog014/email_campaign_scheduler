@@ -170,7 +170,37 @@ def seed_scripts_and_shows(s, workspace, moment):
              preheader=reminder.preheader, body=reminder.body, script_id=reminder.id, audience_kind="list",
              audience_ref=str(season), created_at=moment - timedelta(days=1), updated_at=moment),
     ])
+    add_smart_examples(s, workspace, moment, made)
     return made
+
+
+def add_smart_examples(s, workspace, moment, made):
+    """Smart sending in the demo: quiet hours, a weekly show, and one at 7 PM in each fan's own time zone."""
+    from . import smart
+    from .dates import local_today, parse_clock
+    from .models import ContactList, Segment, Show
+    workspace.quiet_start, workspace.quiet_end = 21 * 60, 8 * 60
+    volunteers = s.scalar(select(ContactList.id).where(ContactList.workspace_id == workspace.id,
+                                                       ContactList.name == "Volunteers"))
+    abroad = s.scalar(select(Segment.id).where(Segment.workspace_id == workspace.id, Segment.name == "Fans Abroad"))
+    weekly = Show(workspace_id=workspace.id, name="Volunteer Call Sheet", subject="This week's call sheet, {{first_name|friend}}",
+                  preheader="Who's ushering, who's on tickets.",
+                  body="Hi {{first_name|there}},\n\nHere's this week's **call sheet**. Reply if you can't make your shift.\n\n"
+                       "[See the schedule](https://teatro-luna.example/volunteers)",
+                  audience_kind="list", audience_ref=str(volunteers), status="standby", repeat_days="0,3",
+                  repeat_time="10:00", created_at=moment - timedelta(days=40), updated_at=moment)
+    weekly.send_at = smart.next_occurrence([0, 3], parse_clock("10:00"), workspace.time_zone, moment)
+    day = local_today(workspace.time_zone, moment) + timedelta(days=3)
+    livestream = Show(workspace_id=workspace.id, name="Livestream for Fans Abroad",
+                      subject="Watch opening night from {{city|wherever you are}}",
+                      preheader="Live at 7 PM your time, with English subtitles.",
+                      body="Hi {{first_name|there}},\n\nYou can't be in the theatre, so the theatre comes to you. "
+                           "**Opening night is streamed live**, at 7:00 PM your time.\n\n"
+                           "[Get your stream ticket](https://teatro-luna.example/stream)",
+                      audience_kind="segment", audience_ref=str(abroad), status="standby", send_mode="their_time",
+                      local_date=day, local_time="19:00", created_at=moment - timedelta(days=2), updated_at=moment)
+    livestream.send_at = max(smart.their_time_window(day, parse_clock("19:00"))[0], moment)
+    s.add_all([weekly, livestream])
 
 
 def people_with(people, tag):

@@ -1,0 +1,18 @@
+{# The A/B subject test: both subjects, how each is doing, and the winner once it is picked. #}
+<section class="card" id="ab-test">
+  <div class="card-head"><h2>A/B Test</h2>
+    {% if ab.perf and ab.perf.ab_winner %}<span class="tape tape-gold">Winner: {{ ab.perf.ab_winner|upper }}</span>{% endif %}</div>
+  <p class="muted small">{{ show.ab_percent }}% of the audience get subject A or B. {% if ab.perf and ab.perf.ab_winner %}The subject with more {{ show.ab_metric }} went to everyone else.{% elif ab.perf %}On {{ ab.perf.ab_decide_at|nice_datetime }} ({{ ab.perf.ab_decide_at|from_now }}) the subject with more {{ show.ab_metric }} goes to everyone else. They wait in the wings until then.{% else %}{{ show.ab_wait_hours }} {{ 'hour' if show.ab_wait_hours == 1 else 'hours' }} after the start, the subject with more {{ show.ab_metric }} goes to everyone else.{% endif %}</p>
+  <div class="ab-grid top-gap">
+    {% for variant, subject in (('a', show.subject), ('b', show.subject_b)) %}
+      {% set n = ab.numbers[variant] if ab.numbers else none %}
+      <div class="ab-side{% if ab.perf and ab.perf.ab_winner == variant %} is-winner{% endif %}">
+        <p class="stat-label">Subject {{ variant|upper }}</p>
+        <p class="ab-subject">{{ subject|plain_subject }}</p>
+        {% if n %}
+          <p class="small">{{ n.emails|number }} sent &middot; <strong>{{ percent(n.opened, n.delivered) }}</strong> opened &middot; <strong>{{ percent(n.clicked, n.delivered) }}</strong> clicked</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+</section>

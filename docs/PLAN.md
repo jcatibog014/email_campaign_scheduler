@@ -118,6 +118,6 @@ Menu: **Stage** (home), **Shows**, **Call Board** (schedule calendar), **Audienc
 - [x] Stage 4: The job queue and worker
 - [x] Stage 5: Sending, retries and rate limits
 - [x] Stage 6: Delivery tracking
-- [ ] Stage 7: Smart sending
+- [x] Stage 7: Smart sending
 - [ ] Stage 8: Reviews and Backstage
 - [ ] Stage 9: Demo, phone app, deploy, README

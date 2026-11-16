@@ -1,0 +1,13 @@
+{# Week or Month, and moving through time. #}
+<div class="board-bar">
+  <ul class="tabs" aria-label="Call Board view">
+    <li><a href="{{ url_for('callboard.board') }}"{% if view == 'week' %} aria-current="page"{% endif %}>Week</a></li>
+    <li><a href="{{ url_for('callboard.board', view='month') }}"{% if view == 'month' %} aria-current="page"{% endif %}>Month</a></li>
+  </ul>
+  <div class="board-nav">
+    <a class="button button-quiet button-small" href="{{ prev_url }}" aria-label="Earlier">&larr;</a>
+    <strong class="board-range">{{ range_label }}</strong>
+    <a class="button button-quiet button-small" href="{{ next_url }}" aria-label="Later">&rarr;</a>
+    {% if offset %}<a class="button button-quiet button-small" href="{{ now_url }}">{{ 'This week' if view == 'week' else 'This month' }}</a>{% endif %}
+  </div>
+</div>

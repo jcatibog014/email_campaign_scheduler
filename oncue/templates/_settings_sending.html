@@ -27,6 +27,24 @@
   </form>
 </section>
 
+<section class="card" id="quiet">
+  <h2>Quiet Hours</h2>
+  <p class="muted">No emails at night: the hours are in each person's own time zone. An email due in quiet hours waits until they end.</p>
+  {% set quiet_on = g.workspace.quiet_start is not none %}
+  <form method="post" class="stack">
+    {{ csrf() }}<input type="hidden" name="action" value="quiet"><input type="hidden" name="anchor" value="quiet">
+    <label class="check"><input type="checkbox" name="quiet" value="on"{% if quiet_on %} checked{% endif %}> <span>Keep quiet hours</span></label>
+    <div class="form-row">
+      <label class="field"><span class="field-label">From</span>
+        <input type="time" name="quiet_start" value="{{ '%02d:%02d'|format(g.workspace.quiet_start // 60, g.workspace.quiet_start % 60) if quiet_on else '21:00' }}"></label>
+      <label class="field"><span class="field-label">Until</span>
+        <input type="time" name="quiet_end" value="{{ '%02d:%02d'|format(g.workspace.quiet_end // 60, g.workspace.quiet_end % 60) if quiet_on else '08:00' }}"></label>
+    </div>
+    {% if errors.quiet %}<p class="field-error">{{ errors.quiet }}</p>{% endif %}
+    <div class="form-actions start"><button class="button" type="submit">Save quiet hours</button></div>
+  </form>
+</section>
+
 <section class="card" id="practice">
   <h2>Practice Mail Server</h2>
   <p class="muted">Make it difficult on purpose, then watch the crew cope in Backstage. Percent of emails.</p>

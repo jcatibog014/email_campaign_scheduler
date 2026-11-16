@@ -21,6 +21,26 @@
         <p class="muted small">Or start from a script: {% for item in scripts %}<a href="{{ url_for('shows.new', script=item.id) }}">{{ item.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}.</p>
       {% endif %}
       {% include "_email_fields.html" %}
+      {# The A/B subject test: folded away until wanted. #}
+      <details class="fold ab-fold"{% if values.ab_on or errors.subject_b %} open{% endif %}>
+        <summary>A/B test the subject</summary>
+        <div class="stack-small">
+          <label class="check"><input type="checkbox" name="ab_on" value="yes"{% if values.ab_on %} checked{% endif %}>
+            <span>Try two subjects on part of the audience, then send the winner to everyone else</span></label>
+          {{ field('subject_b', 'Subject B', values.subject_b, errors.subject_b, hint='Subject A is the one above', attrs='maxlength="200"') }}
+          <div class="form-row">
+            <label class="field"><span class="field-label">Test on</span>
+              <select name="ab_percent">{% for value in ab_percents %}<option value="{{ value }}"{% if value == values.ab_percent %} selected{% endif %}>{{ value }}% of the audience</option>{% endfor %}</select></label>
+            <label class="field"><span class="field-label">Then wait</span>
+              <select name="ab_wait_hours">{% for value in ab_waits %}<option value="{{ value }}"{% if value == values.ab_wait_hours %} selected{% endif %}>{{ value }} {{ 'hour' if value == 1 else 'hours' }}</option>{% endfor %}</select></label>
+          </div>
+          <fieldset class="choices">
+            <legend>The winner has more</legend>
+            <label class="check"><input type="radio" name="ab_metric" value="opens"{% if values.ab_metric != 'clicks' %} checked{% endif %}> Opens</label>
+            <label class="check"><input type="radio" name="ab_metric" value="clicks"{% if values.ab_metric == 'clicks' %} checked{% endif %}> Clicks</label>
+          </fieldset>
+        </div>
+      </details>
       <div class="form-actions">
         <a class="button button-quiet" href="{{ url_for('shows.page', show_id=found.id) if found else url_for('shows.index') }}">Cancel</a>
         <button class="button" type="submit">{{ 'Save show' if found else 'Save in rehearsal' }}</button>
