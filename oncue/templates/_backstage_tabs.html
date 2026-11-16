@@ -1,0 +1,9 @@
+{% set here = request.endpoint %}
+<ul class="tabs" aria-label="Backstage">
+  <li><a href="{{ url_for('backstage.index') }}"{% if here == 'backstage.index' %} aria-current="page"{% endif %}>The Crew</a></li>
+  <li><a href="{{ url_for('backstage.queue_page') }}"{% if here == 'backstage.queue_page' %} aria-current="page"{% endif %}>Queue <span class="count">{{ tab_counts.queue|number }}</span></a></li>
+  <li><a href="{{ url_for('backstage.retries') }}"{% if here == 'backstage.retries' %} aria-current="page"{% endif %}>Missed Cues <span class="count">{{ tab_counts.retries|number }}</span></a></li>
+  <li><a href="{{ url_for('backstage.dead_letters') }}"{% if here == 'backstage.dead_letters' %} aria-current="page"{% endif %}>Dead Letters <span class="count">{{ tab_counts.dead|number }}</span></a></li>
+  <li><a href="{{ url_for('backstage.unsure') }}"{% if here == 'backstage.unsure' %} aria-current="page"{% endif %}>Unsure <span class="count">{{ tab_counts.unsure|number }}</span></a></li>
+  <li><a href="{{ url_for('backstage.inbox') }}"{% if here in ('backstage.inbox', 'backstage.inbox_mail') %} aria-current="page"{% endif %}>Practice Inbox <span class="count">{{ tab_counts.inbox|number }}</span></a></li>
+</ul>

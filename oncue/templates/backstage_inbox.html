@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty %}
+{% block title %}Practice Inbox - Backstage - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Backstage') }}
+  {% include "_backstage_tabs.html" %}
+  <p class="muted bottom-gap">Every email the practice mail server took. Nothing here reached a real inbox.</p>
+  {% if rows %}
+    <div class="table-wrap">
+      <table class="fit-table">
+        <thead><tr><th>To</th><th>Subject</th><th>Taken</th></tr></thead>
+        <tbody>{% for mail in rows %}
+          <tr><td><a class="row-link" href="{{ url_for('backstage.inbox_mail', mail_id=mail.id) }}">{{ mail.to }}</a></td>
+            <td data-label="Subject" class="small">{{ mail.subject }}{% if mail.fate != 'deliver' %} <span class="chip">{{ 'will bounce' if mail.fate == 'bounce' else 'will be marked as spam' }}</span>{% endif %}</td>
+            <td data-label="Taken" class="nowrap">{{ mail.accepted_at|ago }}</td></tr>
+        {% endfor %}</tbody>
+      </table>
+    </div>
+    {% set last = page * page_size %}
+    <div class="pager"><span class="muted small">Showing {{ (page - 1) * page_size + 1 }}&ndash;{{ [last, total]|min }} of {{ total|number }}</span>
+      {% if page > 1 %}<a class="button button-quiet button-small" href="{{ url_for('backstage.inbox', page=page - 1) }}">Previous</a>{% endif %}
+      {% if last < total %}<a class="button button-quiet button-small" href="{{ url_for('backstage.inbox', page=page + 1) }}">Next</a>{% endif %}</div>
+  {% else %}
+    {% call empty('An Empty Inbox') %}<p>Send a show, or a test, and the emails the practice server takes appear here.</p>{% endcall %}
+  {% endif %}
+{% endblock %}

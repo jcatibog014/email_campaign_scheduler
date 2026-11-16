@@ -175,11 +175,11 @@ def seed_scripts_and_shows(s, workspace, moment):
 
 
 def add_smart_examples(s, workspace, moment, made):
-    """Smart sending in the demo: quiet hours, a weekly show, and one at 7 PM in each fan's own time zone."""
+    """Smart sending in the demo: a weekly show, and one at 7 PM in each fan's own time zone. (Quiet hours
+    stay off, so Start now sends at any hour; they are one switch away in Settings.)"""
     from . import smart
     from .dates import local_today, parse_clock
     from .models import ContactList, Segment, Show
-    workspace.quiet_start, workspace.quiet_end = 21 * 60, 8 * 60
     volunteers = s.scalar(select(ContactList.id).where(ContactList.workspace_id == workspace.id,
                                                        ContactList.name == "Volunteers"))
     abroad = s.scalar(select(Segment.id).where(Segment.workspace_id == workspace.id, Segment.name == "Fans Abroad"))

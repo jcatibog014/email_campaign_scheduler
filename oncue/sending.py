@@ -230,9 +230,17 @@ def counts(s, show_id, performance_id=None):
     return dict(s.execute(query.group_by(Message.status)).all())
 
 
+def paused_check(s, message, workspace, contact, now):
+    """Backstage's Pause All Sending: wait (without using a try) until it is switched off."""
+    if workspace.sending_paused and not message.is_test:
+        raise queue.Defer(now + timedelta(minutes=1), "Sending is paused in Backstage.")
+
+
 def init_app(app):
     if on_show_move not in shows.on_move:
         shows.on_move.append(on_show_move)
+    if paused_check not in before_send:
+        before_send.insert(0, paused_check)
 
 
 # ---------- Progress, for the show's page and the Stage ----------

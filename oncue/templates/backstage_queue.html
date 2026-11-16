@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty, job_status %}
+{% block title %}Queue - Backstage - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Backstage') }}
+  {% include "_backstage_tabs.html" %}
+  {% if rows %}
+    <div class="table-wrap">
+      <table class="fit-table">
+        <thead><tr><th>Job</th><th>Cue</th><th>When</th><th class="num">Tries</th></tr></thead>
+        <tbody>{% for job, about, link in rows %}
+          <tr><td><strong>{{ kind_labels.get(job.kind, job.kind) }}</strong><div class="small">{% if link %}<a href="{{ link }}">{{ about }}</a>{% else %}{{ about }}{% endif %}</div>
+              {% if job.last_error %}<div class="muted small">{{ job.last_error[:160] }}</div>{% endif %}</td>
+            <td>{{ job_status(job.status) }}</td>
+            <td data-label="When" class="nowrap">{% if job.status == 'running' %}lease ends {{ job.lease_until|from_now }}<div class="muted small">{{ job.locked_by }}</div>{% elif job.run_at <= now %}due now{% else %}{{ job.run_at|from_now }}{% endif %}</td>
+            <td data-label="Tries" class="num">{{ job.attempts }} of {{ job.max_attempts }}</td></tr>
+        {% endfor %}</tbody>
+      </table>
+    </div>
+    {% set last = page * page_size %}
+    <div class="pager"><span class="muted small">Showing {{ (page - 1) * page_size + 1 }}&ndash;{{ [last, total]|min }} of {{ total|number }}</span>
+      {% if page > 1 %}<a class="button button-quiet button-small" href="{{ url_for('backstage.queue_page', page=page - 1) }}">Previous</a>{% endif %}
+      {% if last < total %}<a class="button button-quiet button-small" href="{{ url_for('backstage.queue_page', page=page + 1) }}">Next</a>{% endif %}</div>
+  {% else %}
+    {% call empty('An Empty Queue') %}<p>Nothing is waiting. When a show goes on Go, its emails line up here.</p>{% endcall %}
+  {% endif %}
+{% endblock %}

@@ -100,7 +100,7 @@ def create_app(test_config=None):
     from . import auth, buckets, cues, hooks, sending_settings, smart, tracking, db, formatting, scheduler, seed, sending, tick, worker  # noqa: F401 (scheduler registers its jobs)
     from .views import audience as audience_views
     from .views import demo, public, settings, stage
-    from .views import callboard
+    from .views import backstage, callboard, reviews as review_views
     from .views import scripts as script_views
     from .views import shows as show_views
 
@@ -118,6 +118,9 @@ def create_app(test_config=None):
     tracking.init_app(app)
     hooks.init_app(app)
     smart.init_app(app)
+    backstage.init_app(app)
+    if ("backstage", backstage.stage_banner) not in stage.panels:
+        stage.panels.append(("backstage", backstage.stage_banner))
     tick.init_app(app)
     worker.init_app(app)
     if worker.nudge not in show_views.nudges:
@@ -125,7 +128,8 @@ def create_app(test_config=None):
     # auth comes first: its before_request (load_user) must run before the others'.
     for blueprint in (auth.bp, stage.bp, settings.bp, demo.bp, audience_views.bp, public.bp,
                       script_views.bp, show_views.bp, tick.bp,
-                      tracking.bp, hooks.bp, callboard.bp):
+                      tracking.bp, hooks.bp, callboard.bp,
+                      review_views.bp, backstage.bp):
         app.register_blueprint(blueprint)
 
     app.jinja_env.globals.update(APP_NAME=APP_NAME, TAGLINE=TAGLINE,

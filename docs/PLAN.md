@@ -119,5 +119,5 @@ Menu: **Stage** (home), **Shows**, **Call Board** (schedule calendar), **Audienc
 - [x] Stage 5: Sending, retries and rate limits
 - [x] Stage 6: Delivery tracking
 - [x] Stage 7: Smart sending
-- [ ] Stage 8: Reviews and Backstage
+- [x] Stage 8: Reviews and Backstage
 - [ ] Stage 9: Demo, phone app, deploy, README
