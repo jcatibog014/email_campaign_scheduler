@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, show_status %}
+{% from "_icons.html" import icon %}
+{% block title %}Call Board - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% call page_head('Call Board') %}
+    <a class="button" href="{{ url_for('shows.new') }}">{{ icon('plus', 16) }} New show</a>
+  {% endcall %}
+  {% with view='week', range_label=days[0]|short_date ~ ' – ' ~ days[-1]|short_date,
+          prev_url=url_for('callboard.board', week=offset - 1), next_url=url_for('callboard.board', week=offset + 1),
+          now_url=url_for('callboard.board') %}{% include "_board_tabs.html" %}{% endwith %}
+  <div class="corkboard week-board">
+    {% for day in days %}
+      {% set cards = by_day.get(day, []) %}
+      <section class="board-day{% if day == today %} is-today{% endif %}{% if not cards %} is-empty{% endif %}" aria-label="{{ day.strftime('%A') }}, {{ day|short_date }}">
+        <h2 class="board-day-head"><span class="tape{% if day == today %} tape-gold{% endif %}">{{ day.strftime('%a') }} {{ day.day }}</span></h2>
+        {% for card in cards %}
+          {% include "_board_card.html" %}
+        {% else %}
+          <p class="board-nothing">Dark</p>
+        {% endfor %}
+      </section>
+    {% endfor %}
+  </div>
+  <p class="muted small top-gap">Times are {{ g.workspace.time_zone.replace('_', ' ') }}. A show sent in each person's own time zone is pinned where its first emails go.</p>
+{% endblock %}

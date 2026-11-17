@@ -1,0 +1,19 @@
+{# Send a Test: the show to one address, through the same queue, limits and mailer. #}
+{% from "_macros.html" import csrf, message_status %}
+<section class="card stack-small" id="test">
+  <h2>Send a Test</h2>
+  <p class="muted small">It goes through the same queue and limits as the real show, with "[Test]" before the subject and a contact's details in the merge fields.</p>
+  <form class="form-row" method="post" action="{{ url_for('shows.send_test', show_id=show.id) }}">
+    {{ csrf() }}
+    <label class="field"><span class="field-label">Send to</span>
+      <input type="email" name="email" value="{{ test_address }}" required></label>
+    <button class="button button-quiet" type="submit">Send a test</button>
+  </form>
+  {% if tests %}
+    <ul class="plain-list top-gap">
+      {% for test in tests %}
+        <li class="list-row"><span class="grow small">{{ test.email }} <span class="muted">&middot; {{ test.created_at|ago }}</span></span>{{ message_status(test.status) }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</section>

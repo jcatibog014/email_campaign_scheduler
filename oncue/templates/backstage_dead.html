@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty, csrf %}
+{% block title %}Dead Letters - Backstage - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Backstage') }}
+  {% include "_backstage_tabs.html" %}
+  <p class="muted bottom-gap">Jobs that failed every try. Nothing retries them by itself: fix the cause, then retry, or discard them.</p>
+  {% if rows %}
+    <ul class="plain-list card dead-list">
+      {% for job, about, link in rows %}
+        <li class="list-row">
+          <span class="grow"><strong>{{ kind_labels.get(job.kind, job.kind) }}</strong> {% if link %}<a href="{{ link }}">{{ about }}</a>{% else %}{{ about }}{% endif %}
+            <br><span class="muted small">{{ job.attempts }} tries, gave up {{ job.finished_at|ago }}</span>
+            <br><span class="small error-text">{{ job.last_error[:300] }}</span></span>
+          <form method="post" action="{{ url_for('backstage.retry_job', job_id=job.id) }}">{{ csrf() }}<button class="button button-small" type="submit">Retry now</button></form>
+          <form method="post" action="{{ url_for('backstage.discard_job', job_id=job.id) }}">{{ csrf() }}<button class="button button-quiet button-small" type="submit">Discard</button></form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    {% call empty('No Dead Letters') %}<p>Every job got through. A job that fails all {{ 6 }} tries would wait here for you.</p>{% endcall %}
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,18 @@
+{# The email as a mail app shows it, in a sandboxed frame (it has its own strict rules: no scripts). #}
+<section class="preview-card">
+  <div class="preview-head">
+    <span class="tape">Preview</span>
+    {% if frame_url %}
+      <form class="preview-as" method="get" action="{{ frame_url }}" target="preview">
+        <label><span class="visually-hidden">Preview as</span>
+          <select name="contact" data-auto-submit>
+            <option value="">As Ana Santos (a sample)</option>
+            {% for contact_id, label in preview_choices %}<option value="{{ contact_id }}">As {{ label }}</option>{% endfor %}
+          </select></label>
+        <button class="button button-quiet button-small" type="submit" data-auto-submit-button>Show</button>
+      </form>
+    {% endif %}
+  </div>
+  <iframe class="preview-frame" name="preview" title="Email preview" src="{{ frame_url or 'about:blank' }}"
+          sandbox="allow-popups allow-popups-to-escape-sandbox"></iframe>
+</section>

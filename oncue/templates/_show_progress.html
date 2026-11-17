@@ -1,0 +1,19 @@
+{# A show's progress: its newest performances, each with a meter. show.html makes it live. #}
+{% if performances %}
+  <div class="show-progress">
+    {% for perf, meter in performances %}
+      {% if loop.first %}
+        {% include "_meter.html" %}
+      {% endif %}
+    {% endfor %}
+    {% if estimate %}<p class="muted small top-gap">At {{ g.workspace.send_rate|round(1) }} a second and {{ g.workspace.daily_cap|number }} a day, the rest should be out by <strong>{{ estimate|nice_datetime }}</strong>.</p>{% endif %}
+    {% if performance_count > 1 %}
+      <ul class="perf-list">
+        {% for perf, meter in performances %}
+          <li><h3>Performance {{ perf.number }} <span class="muted small">{{ perf.starts_at|nice_datetime }}</span></h3>
+            <p class="muted small">{{ meter.gone|number }} sent of {{ meter.total|number }}{% if meter.trouble %}, {{ meter.trouble }} with trouble{% endif %}</p></li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+{% endif %}

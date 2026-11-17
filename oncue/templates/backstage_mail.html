@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, message_status %}
+{% block title %}{{ mail.subject }} - Practice Inbox - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head(mail.subject, back=url_for('backstage.inbox'), back_label='Practice Inbox') }}
+  <div class="split">
+    <section class="preview-card">
+      <iframe class="preview-frame" title="The email as it arrived" src="{{ url_for('backstage.inbox_frame', mail_id=mail.id) }}" sandbox="allow-popups allow-popups-to-escape-sandbox"></iframe>
+    </section>
+    <aside class="card">
+      <h2>Envelope</h2>
+      <dl class="facts top-gap">
+        <dt>To</dt><dd>{{ mail.to }}</dd>
+        <dt>Taken</dt><dd>{{ mail.accepted_at|nice_datetime }}</dd>
+        {% if message %}<dt>Email</dt><dd><a href="{{ url_for('shows.email_page', show_id=message.show_id, message_id=message.id) }}">{{ message_status(message.status) }}</a></dd>{% endif %}
+        <dt>Message id</dt><dd class="small"><code>{{ mail.provider_id }}</code></dd>
+      </dl>
+      <h3 class="top-gap">Headers</h3>
+      <dl class="facts small top-gap">{% for name, value in mail.headers|dictsort %}<dt>{{ name }}</dt><dd><code>{{ value }}</code></dd>{% endfor %}</dl>
+      <details class="fold top-gap"><summary>Plain-text version</summary><pre class="plain-text">{{ mail.text }}</pre></details>
+    </aside>
+  </div>
+{% endblock %}

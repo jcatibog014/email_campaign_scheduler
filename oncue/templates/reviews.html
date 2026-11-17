@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty %}
+{% block title %}Reviews - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Reviews') }}
+  <ul class="tabs" aria-label="Period">
+    {% for period in periods %}
+      <li><a href="{{ url_for('reviews.index', days=period) }}"{% if period == days %} aria-current="page"{% endif %}>{{ 'Last ' ~ period ~ ' days' if period != 365 else 'Last year' }}</a></li>
+    {% endfor %}
+  </ul>
+
+  {% if not numbers.sent %}
+    {% call empty('No Reviews Yet') %}<p>When shows go out in this period, how they did will be here: delivered, opened, clicked, and why emails bounced.</p>{% endcall %}
+  {% else %}
+    <div class="stats">
+      <div class="stat"><p class="stat-label">Sent</p><p class="stat-value">{{ numbers.sent|number }}</p><p class="stat-note">taken by the mail service</p></div>
+      <div class="stat"><p class="stat-label">Delivered</p><p class="stat-value">{{ percent(numbers.delivered, numbers.sent, 1) }}</p><p class="stat-note">{{ numbers.delivered|number }} arrived</p></div>
+      <div class="stat"><p class="stat-label">Opened</p><p class="stat-value">{{ percent(numbers.opened, numbers.delivered, 1) }}</p><p class="stat-note">of those delivered</p></div>
+      <div class="stat"><p class="stat-label">Clicked</p><p class="stat-value">{{ percent(numbers.clicked, numbers.delivered, 1) }}</p><p class="stat-note">of those delivered</p></div>
+      <div class="stat"><p class="stat-label">Bounced</p><p class="stat-value">{{ percent(numbers.bounced, numbers.sent, 1) }}</p><p class="stat-note">{{ numbers.bounced|number }} on do-not-send now</p></div>
+      <div class="stat"><p class="stat-label">Unsubscribed</p><p class="stat-value">{{ numbers.unsubscribed|number }}</p><p class="stat-note">{{ numbers.complained|number }} marked as spam</p></div>
+    </div>
+
+    <div class="grid grid-2 top-gap">
+      <section class="card chart-card">
+        <h2>Delivery Funnel</h2>
+        <p class="muted small">From sent to clicked, each bar out of everyone sent.</p>
+        <div class="funnel" role="img" aria-label="Delivery funnel">
+          {% for row in funnel %}
+            <div class="funnel-row">
+              <span class="funnel-label">{{ row.label }}</span>
+              <svg class="funnel-bar" viewBox="0 0 100 12" preserveAspectRatio="none" aria-hidden="true">
+                <rect class="chart-track" x="0" y="0" width="100" height="12" rx="2"></rect>
+                {% if row.width %}<rect class="chart-bar" x="0" y="0" width="{{ row.width }}" height="12" rx="2"><title>{{ row.label }}: {{ row.value|number }} ({{ '%.1f'|format(row.share) }}%)</title></rect>{% endif %}
+              </svg>
+              <span class="funnel-value">{{ row.value|number }} <span class="muted">{{ '%.0f'|format(row.share) }}%</span></span>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="card chart-card">
+        <h2>First Opens {{ 'per Week' if weekly else 'per Day' }}</h2>
+        <p class="muted small">When people first opened an email sent in this period. Point at a bar for its number.</p>
+        <svg class="column-chart" viewBox="0 0 {{ opens.width }} {{ opens.height }}" role="img" aria-label="First opens {{ 'per week' if weekly else 'per day' }}">
+          {% for y, value in opens.ticks %}
+            <line class="chart-grid" x1="{{ opens.left }}" x2="{{ opens.right }}" y1="{{ y }}" y2="{{ y }}"></line>
+            <text class="chart-axis" x="{{ opens.left - 6 }}" y="{{ y + 4 }}" text-anchor="end">{{ value|number }}</text>
+          {% endfor %}
+          {% for bar in opens.bars %}
+            <g class="chart-column">
+              <rect class="chart-hit" x="{{ bar.x_mid - 10 }}" y="0" width="20" height="{{ opens.base }}"><title>{{ bar.title }}</title></rect>
+              {% if bar.path %}<path class="chart-bar" d="{{ bar.path }}"><title>{{ bar.title }}</title></path>{% endif %}
+            </g>
+            {% if loop.index0 in opens.shown %}<text class="chart-axis" x="{{ bar.x_mid }}" y="{{ opens.label_y }}" text-anchor="middle">{{ bar.label }}</text>{% endif %}
+          {% endfor %}
+          <line class="chart-baseline" x1="{{ opens.left }}" x2="{{ opens.right }}" y1="{{ opens.base }}" y2="{{ opens.base }}"></line>
+          {% if opens.empty %}<text class="chart-empty" x="{{ (opens.left + opens.right) / 2 }}" y="{{ opens.base / 2 }}" text-anchor="middle">No opens yet: news comes in over the next hour or so.</text>{% endif %}
+        </svg>
+        <details class="fold top-gap">
+          <summary>Show as a table</summary>
+          <div class="table-wrap"><table><thead><tr><th>{{ 'Week of' if weekly else 'Day' }}</th><th class="num">First opens</th></tr></thead>
+            <tbody>{% for label, value, _title in opens_points if value %}<tr><td>{{ label }}</td><td class="num">{{ value|number }}</td></tr>{% else %}<tr><td colspan="2" class="muted">No opens yet.</td></tr>{% endfor %}</tbody></table></div>
+        </details>
+      </section>
+    </div>
+
+    <section class="card top-gap">
+      <h2>Show by Show</h2>
+      <div class="table-wrap top-gap">
+        <table class="fit-table">
+          <thead><tr><th>Show</th><th class="num">Sent</th><th class="num">Delivered</th><th class="num">Opened</th><th class="num">Clicked</th><th class="num">Bounced</th><th class="num">Unsubscribed</th></tr></thead>
+          <tbody>{% for show, last, r in rows %}
+            <tr><td><a class="row-link" href="{{ url_for('shows.page', show_id=show.id) }}">{{ show.name }}</a><div class="muted small">{{ last|short_date }}</div></td>
+              <td data-label="Sent" class="num">{{ r.sent|number }}</td>
+              <td data-label="Delivered" class="num">{{ percent(r.delivered, r.sent) }}</td>
+              <td data-label="Opened" class="num">{{ percent(r.opened, r.delivered) }}</td>
+              <td data-label="Clicked" class="num">{{ percent(r.clicked, r.delivered) }}</td>
+              <td data-label="Bounced" class="num">{{ r.bounced|number }}</td>
+              <td data-label="Unsubscribed" class="num">{{ r.unsubscribed|number }}</td></tr>
+          {% endfor %}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="grid grid-2 top-gap">
+      <section class="card">
+        <h2>Why Emails Bounced</h2>
+        {% if bounces %}
+          <ul class="plain-list top-gap">{% for reason, count in bounces %}<li class="list-row"><span class="grow small">{{ reason }}</span><strong>{{ count|number }}</strong></li>{% endfor %}</ul>
+        {% else %}<p class="muted top-gap">No bounces in this period.</p>{% endif %}
+      </section>
+      <section class="card">
+        <h2>Most Clicked Links</h2>
+        {% if links %}
+          <ul class="plain-list top-gap">{% for url, show_name, people in links %}<li class="list-row"><span class="grow small url">{{ url }}<br><span class="muted">{{ show_name }}</span></span><strong>{{ plural(people, 'person', 'people') }}</strong></li>{% endfor %}</ul>
+        {% else %}<p class="muted top-gap">No clicks in this period.</p>{% endif %}
+      </section>
+    </div>
+    <p class="muted small top-gap">Opens are a rough guide: some mail apps open every picture by themselves, and some never do.</p>
+  {% endif %}
+{% endblock %}

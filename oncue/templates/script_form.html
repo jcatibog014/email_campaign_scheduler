@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, csrf, field %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ found.name if found else 'New Script' }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% call page_head(found.name if found else 'New Script', back=url_for('scripts.index'), back_label='Scripts') %}
+    {% if found %}<a class="button button-quiet" href="{{ url_for('shows.new', script=found.id) }}">{{ icon('shows', 16) }} Use in a show</a>{% endif %}
+  {% endcall %}
+  <div class="editor">
+    <form method="post" class="card stack" id="email-form">
+      {{ csrf() }}
+      {{ field('name', 'Script name', values.name, errors.name, hint='Only you see it', attrs='required maxlength="80"') }}
+      {% include "_email_fields.html" %}
+      <div class="form-actions">
+        <button class="button" type="submit">Save script</button>
+      </div>
+    </form>
+    <div class="editor-side stack">
+      {% set frame_url = url_for('scripts.frame', script_id=found.id) if found else none %}
+      {% include "_preview.html" %}
+      {% include "_merge_help.html" %}
+      {% if found %}
+        <form method="post" action="{{ url_for('scripts.delete', script_id=found.id) }}" data-confirm="Delete the script {{ found.name }}? Shows made from it keep their own copy.">
+          {{ csrf() }}<button class="button button-danger" type="submit">{{ icon('trash', 16) }} Delete script</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

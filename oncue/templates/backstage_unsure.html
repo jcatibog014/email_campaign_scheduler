@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty, csrf %}
+{% block title %}Unsure - Backstage - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Backstage') }}
+  {% include "_backstage_tabs.html" %}
+  <p class="muted bottom-gap">The mail service didn't answer (or a worker stopped mid-send), and it can't tell us whether it took the email. We don't resend by ourselves: a missing email is better than a double one. Check (ask the person, or look in Brevo's logs), then choose.</p>
+  {% if rows %}
+    <ul class="plain-list card dead-list">
+      {% for message, show in rows %}
+        <li class="list-row">
+          <span class="grow"><a href="{{ url_for('shows.email_page', show_id=show.id, message_id=message.id) }}">{{ message.email }}</a> <span class="muted">&middot; {{ show.name }}</span>
+            <br><span class="small muted">{{ message.last_error }}</span></span>
+          <form method="post" action="{{ url_for('backstage.mark_went', message_id=message.id) }}">{{ csrf() }}<button class="button button-quiet button-small" type="submit">It went</button></form>
+          <form method="post" action="{{ url_for('backstage.resend', message_id=message.id) }}" data-confirm="Send it to {{ message.email }} again? If the first one did arrive, they get two.">{{ csrf() }}<button class="button button-small" type="submit">Resend</button></form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    {% call empty('Nothing Unsure') %}<p>Every email's fate is known.</p>{% endcall %}
+  {% endif %}
+{% endblock %}

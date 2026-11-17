@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, csrf, field %}
+{% block title %}{{ 'Edit Contact' if contact else 'Add a Contact' }} - {{ APP_NAME }}{% endblock %}
+{% macro v(name, default='') %}{{ values.get(name, default) if values else default }}{% endmacro %}
+{% block content %}
+  {{ page_head('Edit Contact' if contact else 'Add a Contact', back=url_for('audience.contact', contact_id=contact.id) if contact else url_for('audience.contacts'), back_label=contact.email if contact else 'Audience') }}
+  {% set fields = (contact.fields or {})|dictsort if contact and not values else [] %}
+  <form method="post" class="card stack form-card">
+    {{ csrf() }}
+    {{ field('email', 'Email', v('email', contact.email if contact else ''), errors.email, type='email', attrs='required autofocus') }}
+    <div class="form-row">
+      {{ field('first_name', 'First name', v('first_name', contact.first_name if contact else ''), errors.first_name, attrs='maxlength="80"') }}
+      {{ field('last_name', 'Last name', v('last_name', contact.last_name if contact else ''), errors.last_name, attrs='maxlength="80"') }}
+    </div>
+    {{ field('tags', 'Tags', v('tags', (contact.tag_names|join(', ')) if contact else ''), errors.tags, hint='Separated by commas, like: member, donor') }}
+    <label class="field{% if errors.time_zone %} has-error{% endif %}">
+      <span class="field-label">Time zone <span class="hint">For shows sent at a time in their own zone. Empty: {{ g.workspace.time_zone.replace('_', ' ') }}</span></span>
+      {% set chosen = v('time_zone', contact.time_zone or '' if contact else '')|trim %}
+      <select name="time_zone">
+        <option value="">The workspace's ({{ g.workspace.time_zone.replace('_', ' ') }})</option>
+        {% for name in zones %}<option value="{{ name }}"{% if name == chosen %} selected{% endif %}>{{ name.replace('_', ' ') }}</option>{% endfor %}
+      </select>
+      {% if errors.time_zone %}<p class="field-error">{{ errors.time_zone }}</p>{% endif %}
+    </label>
+
+    <fieldset class="stack-small">
+      <legend class="field-label">Custom fields <span class="hint">For merge fields in scripts, like {{ '{{city}}' }}</span></legend>
+      {% set count = 5 %}
+      <input type="hidden" name="field_count" value="{{ count }}">
+      {% for index in range(count) %}
+        {% set pair = fields[index] if index < fields|length else (values.get('field_name_' ~ index, ''), values.get('field_value_' ~ index, '')) if values else ('', '') %}
+        <div class="form-row pair-row">
+          <label class="field"><span class="visually-hidden">Field {{ index + 1 }} name</span><input type="text" name="field_name_{{ index }}" value="{{ pair[0].replace('_', ' ') if pair[0] else '' }}" placeholder="Name, like city"></label>
+          <label class="field"><span class="visually-hidden">Field {{ index + 1 }} value</span><input type="text" name="field_value_{{ index }}" value="{{ pair[1] }}" placeholder="Value, like Cebu" maxlength="200"></label>
+        </div>
+      {% endfor %}
+      {% if errors.fields %}<p class="field-error">{{ errors.fields }}</p>{% endif %}
+    </fieldset>
+
+    {% if not contact %}
+      {% if all_lists %}
+        <label class="field"><span class="field-label">Add to a list <span class="hint">Optional</span></span>
+          <select name="list_id"><option value="">No list</option>{% for found, members in all_lists %}<option value="{{ found.id }}"{% if values and values.get('list_id')|string == found.id|string %} selected{% endif %}>{{ found.name }}</option>{% endfor %}</select>
+        </label>
+      {% endif %}
+      <label class="check{% if errors.consent %} has-error{% endif %}"><input type="checkbox" name="consent" value="yes"{% if values and values.get('consent') == 'yes' %} checked{% endif %}>
+        <span>This person agreed to get emails from {{ g.workspace.sender_name or 'me' }}.</span></label>
+      {% if errors.consent %}<p class="field-error">{{ errors.consent }}</p>{% endif %}
+    {% endif %}
+    <div class="form-actions">
+      <a class="button button-quiet" href="{{ url_for('audience.contact', contact_id=contact.id) if contact else url_for('audience.contacts') }}">Cancel</a>
+      <button class="button" type="submit">{{ 'Save contact' if contact else 'Add contact' }}</button>
+    </div>
+  </form>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty, show_status, cue %}
+{% from "_icons.html" import icon %}
+{% block title %}Stage - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% call page_head('Stage') %}
+    <a class="button" href="{{ url_for('shows.new') }}">{{ icon('plus', 16) }} New show</a>
+  {% endcall %}
+  {% block banners %}{% for template_name in stage_banners|default([]) %}{% include template_name %}{% endfor %}{% endblock %}
+
+  {% if not show_total %}
+    {% call empty('The Stage Is Dark') %}
+      <p>Nothing is on yet. Write a show, choose its audience and set the time; it will appear here, under the lights.</p>
+      <a class="button" href="{{ url_for('shows.new') }}">New show</a>
+    {% endcall %}
+  {% else %}
+    <div class="stage-grid">
+      <section class="stage-section now-playing" aria-labelledby="now-playing">
+        <h2 id="now-playing" class="section-title"><span class="tape">Now Playing</span></h2>
+        {% for show in live %}
+          <article class="card marquee{% if show.status == 'go' %} is-live{% endif %}">
+            <div class="show-line">
+              <h3><a class="card-title-link" href="{{ url_for('shows.page', show_id=show.id) }}">{{ show.name }}</a></h3>
+              {{ show_status(show.status) }}
+            </div>
+            <p class="meta">To {{ labels[show.id] }} &middot; started {{ show.started_at|ago }}</p>
+            {% if meters is defined and meters.get(show.id) %}{% with meter = meters[show.id] %}{% include "_meter.html" %}{% endwith %}{% endif %}
+          </article>
+        {% else %}
+          <p class="quiet-line">Nothing is going out right now.</p>
+        {% endfor %}
+      </section>
+
+      <section class="stage-section" aria-labelledby="up-next">
+        <h2 id="up-next" class="section-title"><span class="tape">Up Next</span></h2>
+        {% if upcoming %}
+          <div class="corkboard mini-board">
+            {% for show in upcoming %}
+              <a class="cue-card" href="{{ url_for('shows.page', show_id=show.id) }}">
+                <strong class="cue-card-title">{{ show.name }}</strong>
+                <span class="cue-card-time">{{ show.send_at|nice_datetime }}</span>
+                <span class="cue-card-meta">{{ labels[show.id] }} &middot; {{ show.send_at|from_now }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="quiet-line">Nothing on Standby. <a href="{{ url_for('shows.index', tab='rehearsal') }}">Schedule a show in rehearsal</a>.</p>
+        {% endif %}
+      </section>
+    </div>
+
+    <section class="stage-section" aria-labelledby="curtain-calls">
+      <h2 id="curtain-calls" class="section-title"><span class="tape">Curtain Calls</span></h2>
+      {% if finished %}
+        <div class="table-wrap">
+          <table class="fit-table">
+            <thead><tr><th>Show</th><th>Finished</th>{% if results is defined %}<th class="num">Delivered</th><th class="num">Opened</th><th class="num">Clicked</th>{% endif %}</tr></thead>
+            <tbody>{% for show in finished %}
+              <tr><td><a class="row-link" href="{{ url_for('shows.page', show_id=show.id) }}">{{ show.name }}</a><div class="muted small">{{ labels[show.id] }}</div></td>
+                <td data-label="Finished" class="nowrap">{{ show.finished_at|nice_datetime }}</td>
+                {% if results is defined %}{% set r = results.get(show.id, {}) %}
+                  <td data-label="Delivered" class="num">{{ percent(r.get('delivered', 0), r.get('sent', 0)) }}</td>
+                  <td data-label="Opened" class="num">{{ percent(r.get('opened', 0), r.get('delivered', 0)) }}</td>
+                  <td data-label="Clicked" class="num">{{ percent(r.get('clicked', 0), r.get('delivered', 0)) }}</td>{% endif %}</tr>
+            {% endfor %}</tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="quiet-line">No show has finished yet.</p>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

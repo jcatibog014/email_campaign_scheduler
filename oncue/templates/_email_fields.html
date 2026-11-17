@@ -1,0 +1,19 @@
+{# Subject, preview line and body: shared by the script editor and the show builder.
+   The Preview button posts the unsaved email to the frame (formaction + formtarget: no JavaScript needed);
+   with JavaScript the preview also follows your typing (app.js, data-live-preview). #}
+{% from "_macros.html" import field %}
+{{ field('subject', 'Subject', values.subject, errors.subject, hint='Merge fields work here too', attrs='maxlength="200"') }}
+{{ field('preheader', 'Preview line', values.preheader, errors.preheader, hint='The grey line inboxes show after the subject', attrs='maxlength="200"') }}
+<label class="field{% if errors.body %} has-error{% endif %}">
+  <span class="field-label">Email <span class="hint">Markdown: **bold**, *italic*, [link words](https://...), # heading, - list</span></span>
+  <textarea class="body-editor" name="body" rows="18" maxlength="50000" data-live-preview>{{ values.body }}</textarea>
+  {% if errors.body %}<p class="field-error">{{ errors.body }}</p>{% endif %}
+</label>
+<div class="preview-controls">
+  <label class="field"><span class="field-label">Preview as</span>
+    <select name="contact">
+      <option value="">Ana Santos (a sample)</option>
+      {% for contact_id, label in preview_choices %}<option value="{{ contact_id }}">{{ label }}</option>{% endfor %}
+    </select></label>
+  <button class="button button-quiet" type="submit" formaction="{{ url_for('scripts.draft_frame') }}" formtarget="preview" formnovalidate data-preview-button>Preview</button>
+</div>

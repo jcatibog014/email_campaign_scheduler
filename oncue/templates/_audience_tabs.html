@@ -1,0 +1,9 @@
+{# The Audience section's tabs, as pills that wrap. #}
+{% set here = request.endpoint %}
+<ul class="tabs" aria-label="Audience">
+  <li><a href="{{ url_for('audience.contacts') }}"{% if here in ('audience.contacts', 'audience.contact', 'audience.new_contact', 'audience.edit_contact') %} aria-current="page"{% endif %}>Contacts <span class="count">{{ tab_counts.contacts|number }}</span></a></li>
+  <li><a href="{{ url_for('audience.lists') }}"{% if here in ('audience.lists', 'audience.new_list', 'audience.list_page', 'audience.edit_list') %} aria-current="page"{% endif %}>Lists <span class="count">{{ tab_counts.lists|number }}</span></a></li>
+  <li><a href="{{ url_for('audience.segments_page') }}"{% if 'segment' in here %} aria-current="page"{% endif %}>Segments <span class="count">{{ tab_counts.segments|number }}</span></a></li>
+  <li><a href="{{ url_for('audience.do_not_send') }}"{% if 'suppression' in here or here == 'audience.do_not_send' %} aria-current="page"{% endif %}>Do Not Send <span class="count">{{ tab_counts.suppressions|number }}</span></a></li>
+  <li><a href="{{ url_for('audience.import_upload') }}"{% if 'import' in here %} aria-current="page"{% endif %}>Import CSV</a></li>
+</ul>

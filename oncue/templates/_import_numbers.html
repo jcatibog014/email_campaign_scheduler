@@ -1,0 +1,13 @@
+{# The import's numbers: on Review (what will happen) and on Done (what happened). #}
+<div class="stats">
+  <div class="stat"><p class="stat-label">New</p><p class="stat-value">{{ numbers.new|number }}</p><p class="stat-note">Added to your audience{% if chosen_list %} and to {{ chosen_list.name }}{% endif %}</p></div>
+  <div class="stat"><p class="stat-label">Already There</p><p class="stat-value">{{ numbers.existing|number }}</p><p class="stat-note">Details filled in, tags added</p></div>
+  <div class="stat"><p class="stat-label">Skipped</p><p class="stat-value">{{ (numbers.invalid + numbers.repeated)|number }}</p><p class="stat-note">{{ numbers.invalid }} without a usable email, {{ numbers.repeated }} repeated in the file</p></div>
+</div>
+{% if numbers.unsubscribed or numbers.do_not_send or numbers.bad_zone %}
+  <ul class="notes">
+    {% if numbers.unsubscribed %}<li>{{ plural(numbers.unsubscribed, 'person') }} in the file unsubscribed before. They stay unsubscribed: only they can subscribe again.</li>{% endif %}
+    {% if numbers.do_not_send %}<li>{{ plural(numbers.do_not_send, 'address', 'addresses') }} {{ 'is' if numbers.do_not_send == 1 else 'are' }} on the do-not-send list and won't get emails.</li>{% endif %}
+    {% if numbers.bad_zone %}<li>{{ plural(numbers.bad_zone, 'time zone') }} {{ "wasn't" if numbers.bad_zone == 1 else "weren't" }} recognised, so those people use the workspace's.</li>{% endif %}
+  </ul>
+{% endif %}

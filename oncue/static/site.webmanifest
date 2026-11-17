@@ -1,0 +1,16 @@
+{
+  "name": "Right On Cue",
+  "short_name": "On Cue",
+  "description": "Make email campaigns, schedule them, retry failed sends and track every delivery. Emails that go out right on cue.",
+  "id": "/",
+  "start_url": "/stage",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6efe3",
+  "theme_color": "#5c1027",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Email Preferences - {{ workspace.sender_name }}{% endblock %}
+{% block layout %}
+  {# A page for the people who get the emails: no menu, just a lit stage. #}
+  <div class="welcome-stage public-stage" id="main">
+    <div class="valance" aria-hidden="true"></div>
+    <section class="card stack">
+      <h1>Email Preferences</h1>
+      <p>For <strong>{{ email }}</strong>, from <strong>{{ workspace.sender_name }}</strong>.</p>
+      {% if contact.status == 'unsubscribed' %}
+        <p>You're unsubscribed. You won't get emails from {{ workspace.sender_name }}.</p>
+        <form method="post">
+          {{ csrf() }}<input type="hidden" name="action" value="resubscribe">
+          <button class="button button-quiet" type="submit">Subscribe again</button>
+        </form>
+      {% else %}
+        {% if topics %}
+          <form method="post" class="stack-small">
+            {{ csrf() }}<input type="hidden" name="action" value="topics">
+            <fieldset class="stack-small">
+              <legend class="field-label">Keep getting</legend>
+              {% for topic in topics %}
+                <label class="check"><input type="checkbox" name="keep" value="{{ topic.id }}" checked>
+                  <span>{{ topic.name }}{% if topic.description %}<br><span class="muted small">{{ topic.description }}</span>{% endif %}</span></label>
+              {% endfor %}
+            </fieldset>
+            <div class="form-actions start"><button class="button button-quiet" type="submit">Save my choices</button></div>
+          </form>
+          <hr>
+        {% endif %}
+        <form method="post" class="stack-small">
+          {{ csrf() }}<input type="hidden" name="action" value="all">
+          <p class="muted small">Stop every email from {{ workspace.sender_name }}.</p>
+          <button class="button" type="submit">Unsubscribe from everything</button>
+        </form>
+      {% endif %}
+    </section>
+    <p class="muted small">Sent with {{ APP_NAME }}.</p>
+  </div>
+{% endblock %}

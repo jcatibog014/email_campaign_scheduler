@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty, message_status %}
+{% from "_icons.html" import icon %}
+{% block title %}Emails of {{ show.name }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Every Email', back=url_for('shows.page', show_id=show.id), back_label=show.name) }}
+  <ul class="tabs" aria-label="Emails by cue">
+    {% for key, label, _statuses in groups %}
+      <li><a href="{{ url_for('shows.emails_page', show_id=show.id, group=key if key != 'all' else none, q=q or none) }}"{% if key == group %} aria-current="page"{% endif %}>{{ label }} <span class="count">{{ group_counts[key]|number }}</span></a></li>
+    {% endfor %}
+  </ul>
+  <form class="search-row" method="get" role="search">
+    {% if group != 'all' %}<input type="hidden" name="group" value="{{ group }}">{% endif %}
+    <label class="search-box"><span class="visually-hidden">Search by email</span>{{ icon('search', 16) }}
+      <input type="search" name="q" value="{{ q }}" placeholder="Search by email"></label>
+    <button class="button" type="submit">Search</button>
+  </form>
+  {% if rows %}
+    <div class="table-wrap">
+      <table class="fit-table">
+        <thead><tr><th>Email</th><th>Cue</th><th class="num">Tries</th><th>Last News</th></tr></thead>
+        <tbody>{% for message in rows %}
+          <tr>
+            <td><a class="row-link" href="{{ url_for('shows.email_page', show_id=show.id, message_id=message.id) }}">{{ message.email }}</a>
+              {% if message.last_error and message.status in ('missed_cue', 'dropped', 'unsure', 'skipped') %}<div class="muted small">{{ message.last_error }}</div>{% endif %}</td>
+            <td>{{ message_status(message.status) }}{% if message.status == 'missed_cue' and message.next_try_at %}<div class="muted small">Next try {{ message.next_try_at|from_now }}</div>{% endif %}</td>
+            <td data-label="Tries" class="num">{{ message.attempts }}</td>
+            <td data-label="Last news" class="nowrap">{{ message.updated_at|ago }}</td>
+          </tr>
+        {% endfor %}</tbody>
+      </table>
+    </div>
+    {% set last = page * page_size %}
+    <div class="pager">
+      <span class="muted small">Showing {{ (page - 1) * page_size + 1 }}&ndash;{{ [last, total]|min }} of {{ total|number }}</span>
+      {% if page > 1 %}<a class="button button-quiet button-small" href="{{ url_for('shows.emails_page', show_id=show.id, group=group if group != 'all' else none, q=q or none, page=page - 1) }}">Previous</a>{% endif %}
+      {% if last < total %}<a class="button button-quiet button-small" href="{{ url_for('shows.emails_page', show_id=show.id, group=group if group != 'all' else none, q=q or none, page=page + 1) }}">Next</a>{% endif %}
+    </div>
+  {% else %}
+    {% call empty('No Emails Here') %}<p>{{ 'Nobody matches that search.' if q else 'No email of this show has this cue right now.' }}</p>{% endcall %}
+  {% endif %}
+  <details class="fold top-gap">
+    <summary>What the cue words mean</summary>
+    <dl class="cue-legend">{% for key, cue in MESSAGE_CUES.items() if key != 'waiting' %}<dt>{{ message_status(key) }}</dt><dd>{{ cue.note }}</dd>{% endfor %}</dl>
+  </details>
+{% endblock %}

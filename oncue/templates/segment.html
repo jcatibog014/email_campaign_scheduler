@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty, csrf %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ found.name }} - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% call page_head(found.name, back=url_for('audience.segments_page'), back_label='Segments') %}
+    <a class="button button-quiet" href="{{ url_for('audience.edit_segment', segment_id=found.id) }}">{{ icon('pencil', 16) }} Edit</a>
+  {% endcall %}
+  <div class="split">
+    <section>
+      <div class="stats"><div class="stat"><p class="stat-label">Matches Now</p><p class="stat-value">{{ total|number }}</p><p class="stat-note">Subscribed and not on the do-not-send list</p></div></div>
+      {% if members %}
+        <div class="table-wrap top-gap">
+          <table class="fit-table">
+            <thead><tr><th>Contact</th><th>Tags</th></tr></thead>
+            <tbody>{% for contact in members %}
+              <tr><td><a class="row-link" href="{{ url_for('audience.contact', contact_id=contact.id) }}">{{ contact.name or contact.email }}</a>{% if contact.name %}<div class="muted small">{{ contact.email }}</div>{% endif %}</td>
+                <td>{% for tag in contact.tag_names %}<span class="chip">{{ tag }}</span>{% else %}<span class="muted dash">&ndash;</span>{% endfor %}</td></tr>
+            {% endfor %}</tbody>
+          </table>
+        </div>
+        {% if total > members|length %}<p class="muted small top-gap">Showing the first {{ members|length }}.</p>{% endif %}
+      {% else %}
+        <div class="top-gap">{% call empty('Nobody Matches Yet') %}<p>When people who fit these rules join your audience, they'll be here.</p>{% endcall %}</div>
+      {% endif %}
+    </section>
+    <aside class="card stack-small">
+      <h2>Rules</h2>
+      <p class="muted small">{{ 'Anyone who matches at least one rule.' if found.match == 'any' else 'Only people who match every rule.' }}</p>
+      <ul class="rule-list">{% for rule in rules %}<li>{% if not loop.first %}<span class="joiner">{{ 'or' if found.match == 'any' else 'and' }}</span> {% endif %}{{ rule }}</li>{% endfor %}</ul>
+      <hr>
+      <form method="post" action="{{ url_for('audience.delete_segment', segment_id=found.id) }}" data-confirm="Delete the segment {{ found.name }}? Nobody leaves your audience.">
+        {{ csrf() }}<button class="button button-danger" type="submit">{{ icon('trash', 16) }} Delete segment</button>
+      </form>
+    </aside>
+  </div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty %}
+{% block title %}Missed Cues - Backstage - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Backstage') }}
+  {% include "_backstage_tabs.html" %}
+  <p class="muted bottom-gap">The mail service said "try later". Each waits a little longer than the last (with some randomness, so they don't all come back at once), up to 6 tries.</p>
+  {% if rows %}
+    <div class="table-wrap">
+      <table class="fit-table">
+        <thead><tr><th>Email</th><th>Why</th><th>Next Try</th><th class="num">Tries</th></tr></thead>
+        <tbody>{% for message, show in rows %}
+          <tr><td><a class="row-link" href="{{ url_for('shows.email_page', show_id=show.id, message_id=message.id) }}">{{ message.email }}</a><div class="muted small">{{ show.name }}</div></td>
+            <td data-label="Why" class="small">{{ message.last_error }}</td>
+            <td data-label="Next try" class="nowrap">{{ message.next_try_at|from_now if message.next_try_at else '–' }}</td>
+            <td data-label="Tries" class="num">{{ message.attempts }} of 6</td></tr>
+        {% endfor %}</tbody>
+      </table>
+    </div>
+  {% else %}
+    {% call empty('No Missed Cues') %}<p>Every email went on its first try, or is waiting its turn.</p>{% endcall %}
+  {% endif %}
+{% endblock %}

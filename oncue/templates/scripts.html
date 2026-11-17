@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, empty %}
+{% from "_icons.html" import icon %}
+{% block title %}Scripts - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% call page_head('Scripts') %}
+    <a class="button" href="{{ url_for('scripts.new') }}">{{ icon('plus', 16) }} New script</a>
+  {% endcall %}
+  {% if scripts %}
+    <div class="grid grid-3">
+      {% for script in scripts %}
+        <article class="card script-card">
+          <h2><a class="card-title-link" href="{{ url_for('scripts.edit', script_id=script.id) }}">{{ script.name }}</a></h2>
+          <p class="script-subject">{{ script.subject|plain_subject or 'No subject yet' }}</p>
+          <p class="muted small">{{ script.preheader }}</p>
+          <div class="card-actions">
+            <span class="muted small">Changed {{ script.updated_at|ago }}</span>
+            <a class="button button-quiet button-small" href="{{ url_for('shows.new', script=script.id) }}">Use in a show</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    {% call empty('No Scripts Yet') %}<p>A script is an email you can use again: a welcome, a reminder, a monthly newsletter. Each show starts with its own copy.</p>
+      <a class="button" href="{{ url_for('scripts.new') }}">New script</a>{% endcall %}
+  {% endif %}
+{% endblock %}

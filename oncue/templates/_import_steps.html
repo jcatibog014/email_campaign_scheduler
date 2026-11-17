@@ -1,0 +1,6 @@
+{# Where you are in the import: Upload, Map Columns, Review, Done. #}
+<ol class="steps" aria-label="Import steps">
+  {% for label in ('Upload', 'Map Columns', 'Review', 'Done') %}
+    <li class="{{ 'is-done' if loop.index < step else 'is-here' if loop.index == step else '' }}"{% if loop.index == step %} aria-current="step"{% endif %}><span class="step-number">{{ loop.index }}</span> {{ label }}</li>
+  {% endfor %}
+</ol>

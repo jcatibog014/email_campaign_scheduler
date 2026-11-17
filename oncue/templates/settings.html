@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, csrf, field %}
+{% block title %}Settings - {{ APP_NAME }}{% endblock %}
+{% macro posted(name, default) %}{{ form.get(name, default) if form else default }}{% endmacro %}
+{% block content %}
+  {{ page_head('Settings') }}
+  <div class="settings">
+
+    <section class="card" id="workspace">
+      <h2>Workspace</h2>
+      <p class="muted">Who your emails come from, and the time zone for every time you see.</p>
+      <form method="post" class="stack">
+        {{ csrf() }}
+        <input type="hidden" name="action" value="workspace">
+        <input type="hidden" name="anchor" value="workspace">
+        {{ field('name', 'Workspace name', posted('name', g.workspace.name), errors.name, attrs='required maxlength="80"') }}
+        <div class="form-row">
+          {{ field('sender_name', 'From name', posted('sender_name', g.workspace.sender_name), errors.sender_name, hint='What people see as the sender', attrs='required maxlength="80"') }}
+          {{ field('sender_email', 'From address', posted('sender_email', g.workspace.sender_email), errors.sender_email, type='email', hint='For Brevo, an address it has checked', attrs='required') }}
+        </div>
+        {{ field('postal_address', 'Postal address', posted('postal_address', g.workspace.postal_address), errors.postal_address, hint='Shown at the bottom of every email, as anti-spam laws ask', attrs='maxlength="300"') }}
+        <label class="field{% if errors.time_zone %} has-error{% endif %}">
+          <span class="field-label">Time zone <span class="hint">Every time on these pages, and "at once" shows</span></span>
+          <select name="time_zone">
+            {% set chosen = posted('time_zone', g.workspace.time_zone)|trim %}
+            {% for name in zones %}<option value="{{ name }}"{% if name == chosen %} selected{% endif %}>{{ name.replace('_', ' ') }}</option>{% endfor %}
+          </select>
+          {% if errors.time_zone %}<p class="field-error">{{ errors.time_zone }}</p>{% endif %}
+        </label>
+        <div class="form-actions start"><button class="button" type="submit">Save workspace</button></div>
+      </form>
+    </section>
+
+    {% for template_name in settings_sections|default([]) %}{% include template_name %}{% endfor %}
+
+    <section class="card" id="appearance" data-theme-settings>
+      <h2>Appearance</h2>
+      <p class="muted">The theatre with the house lights up, or down. Saved on this device.</p>
+      <fieldset class="choices js-only">
+        <legend class="visually-hidden">Theme</legend>
+        <label class="check"><input type="radio" name="theme" value="system"> Same as this device</label>
+        <label class="check"><input type="radio" name="theme" value="light"> House lights up (light)</label>
+        <label class="check"><input type="radio" name="theme" value="dark"> House lights down (dark)</label>
+      </fieldset>
+      <p class="muted no-js-only">The theme follows your device's setting. Turn on JavaScript to choose one here.</p>
+    </section>
+
+    <section class="card" id="account">
+      <h2>Your Account</h2>
+      {% if g.user.is_demo %}
+        <p class="muted">You are {{ g.user.name }}, in a demo. The demo's account can't be changed, and it is deleted 24 hours after it started.</p>
+      {% else %}
+        <p class="muted">You log in as {{ g.user.email }}.</p>
+        <form method="post" class="form-row">
+          {{ csrf() }}
+          <input type="hidden" name="action" value="name">
+          {{ field('user_name', 'Your name', posted('user_name', g.user.name), errors.user_name, attrs='required maxlength="80" autocomplete="name"') }}
+          <button class="button" type="submit">Save name</button>
+        </form>
+        <details class="fold"{% if errors.current_password or errors.new_password %} open{% endif %}>
+          <summary>Change password</summary>
+          <form method="post" class="stack">
+            {{ csrf() }}
+            <input type="hidden" name="action" value="password">
+            {{ field('current_password', 'Current password', type='password', error=errors.current_password, attrs='required autocomplete="current-password"') }}
+            {{ field('new_password', 'New password', type='password', error=errors.new_password, hint='At least 8 characters', attrs='required autocomplete="new-password"') }}
+            {{ field('confirm_password', 'New password again', type='password', attrs='required autocomplete="new-password"') }}
+            <div class="form-actions start"><button class="button" type="submit">Change password</button></div>
+          </form>
+        </details>
+      {% endif %}
+      <div class="setting-row">
+        <div>
+          <h3>Install the App</h3>
+          <p class="muted small">Right On Cue can sit on your phone's home screen like an app. On an iPhone: Share, then Add to Home Screen.</p>
+        </div>
+        <button class="button button-quiet" type="button" data-install hidden>Install app</button>
+      </div>
+      <div class="setting-row">
+        <div>
+          <h3>{{ 'Leave the Demo' if g.user.is_demo else 'Log Out' }}</h3>
+          <p class="muted small">{{ 'You can start a new demo from the login page.' if g.user.is_demo else 'Log out on this device.' }}</p>
+        </div>
+        <form method="post" action="{{ url_for('auth.logout') }}">
+          {{ csrf() }}
+          <button class="button button-quiet" type="submit">{{ 'Leave the demo' if g.user.is_demo else 'Log out' }}</button>
+        </form>
+      </div>
+    </section>
+  </div>
+{% endblock %}

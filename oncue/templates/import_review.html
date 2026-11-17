@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, csrf %}
+{% block title %}Review the Import - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Audience') }}
+  {% include "_audience_tabs.html" %}
+  {% include "_import_steps.html" %}
+  <section class="card stack">
+    <h2>This Is What Will Happen</h2>
+    <p class="muted">Nothing has changed yet. Check the numbers, then import.</p>
+    {% include "_import_numbers.html" %}
+    <form method="post" class="form-actions">
+      {{ csrf() }}
+      <a class="button button-quiet" href="{{ url_for('audience.import_map', import_id=imp.id) }}">Back to the columns</a>
+      <button class="button" type="submit">Import {{ plural(numbers.new + numbers.existing, 'contact') }}</button>
+    </form>
+  </section>
+{% endblock %}

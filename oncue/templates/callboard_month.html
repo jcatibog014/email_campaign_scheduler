@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, show_status %}
+{% from "_icons.html" import icon %}
+{% block title %}Call Board - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {% call page_head('Call Board') %}
+    <a class="button" href="{{ url_for('shows.new') }}">{{ icon('plus', 16) }} New show</a>
+  {% endcall %}
+  {% with view='month', range_label=first.strftime('%B %Y'),
+          prev_url=url_for('callboard.board', view='month', month=offset - 1),
+          next_url=url_for('callboard.board', view='month', month=offset + 1),
+          now_url=url_for('callboard.board', view='month') %}{% include "_board_tabs.html" %}{% endwith %}
+  <div class="corkboard month-board">
+    <div class="month-head" aria-hidden="true">{% for name in ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun') %}<span class="tape">{{ name }}</span>{% endfor %}</div>
+    {% for week in weeks %}
+      <div class="month-week">
+        {% for day in week %}
+          {% set cards = by_day.get(day, []) %}
+          <div class="month-day{% if day.month != first.month %} is-other{% endif %}{% if day == today %} is-today{% endif %}">
+            <span class="month-date">{{ day.day }}</span>
+            {% for card in cards[:3] %}
+              <a class="month-pin{% if card.status == 'curtain_down' %} is-done{% endif %}" href="{{ url_for('shows.page', show_id=card.show.id) }}" title="{{ show_cue(card.status).label }}: {{ card.show.name }}">
+                <span class="pin-time">{{ card.at|clock }}</span> {{ card.show.name }}</a>
+            {% endfor %}
+            {% if cards|length > 3 %}<a class="month-more" href="{{ url_for('callboard.board', week=(day - this_monday).days // 7) }}">+{{ cards|length - 3 }} more</a>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

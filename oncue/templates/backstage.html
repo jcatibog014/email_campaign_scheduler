@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_head, csrf, cue %}
+{% block title %}Backstage - {{ APP_NAME }}{% endblock %}
+{% block content %}
+  {{ page_head('Backstage') }}
+  {% include "_backstage_tabs.html" %}
+
+  <div class="stats">
+    <div class="stat"><p class="stat-label">Due Now</p><p class="stat-value">{{ due_now|number }}</p><p class="stat-note">jobs waiting for a worker</p></div>
+    <div class="stat"><p class="stat-label">Waiting for Later</p><p class="stat-value">{{ (jobs.get('queued', 0) - due_now)|number }}</p><p class="stat-note">retries, pacing, scheduled news</p></div>
+    <div class="stat"><p class="stat-label">On Stage</p><p class="stat-value">{{ jobs.get('running', 0)|number }}</p><p class="stat-note">running right now</p></div>
+    <div class="stat"><p class="stat-label">Done This Week</p><p class="stat-value">{{ jobs.get('done', 0)|number }}</p><p class="stat-note">then they're tidied away</p></div>
+    <div class="stat"><p class="stat-label">Dead Letters</p><p class="stat-value">{{ jobs.get('dead', 0)|number }}</p><p class="stat-note">failed every try</p></div>
+  </div>
+
+  <div class="grid grid-2 top-gap">
+    <section class="card">
+      <h2>The Crew</h2>
+      <p class="muted small">Workers take jobs from the queue. Each writes a heartbeat every round; one silent for two minutes has gone quiet.</p>
+      {% if crew %}
+        <ul class="plain-list top-gap">
+          {% for row, state in crew %}
+            <li class="list-row">
+              <span class="crew-lamp crew-{{ state }}" aria-hidden="true"></span>
+              <span class="grow"><strong>{{ row.id }}</strong><br><span class="muted small">{{ row.kind }} &middot; {{ row.jobs_done|number }} jobs &middot; started {{ row.started_at|ago }}</span></span>
+              <span class="small nowrap">{% if state == 'on' %}On duty{% elif state == 'off' %}Off duty{% else %}Gone quiet{% endif %}<br><span class="muted">seen {{ row.last_seen|ago }}</span></span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted top-gap">No worker has reported in yet. The web app starts one with its first page; `flask --app oncue worker` starts one in its own window.</p>
+      {% endif %}
+    </section>
+
+    <section class="card stack-small">
+      <h2>Sending</h2>
+      <p class="muted small">With {{ mailer_label|lower if mailer == 'practice' else mailer_label }}.</p>
+      <dl class="facts">
+        <dt>Safety Curtain</dt>
+        <dd>{% if curtain and curtain.state != 'closed' %}{{ cue(CUE_WORDS.safety_curtain) }} <span class="small">{{ 'testing with one email' if curtain.state == 'half_open' else 'until ' ~ curtain.retry_at|clock }}</span>
+              <div class="muted small">{{ curtain.last_error }}</div>
+            {% else %}Up <span class="muted small">({{ curtain.failures if curtain else 0 }} of {{ trip_after }} failures in a row)</span>{% endif %}</dd>
+        <dt>Pace</dt>
+        <dd>
+          <svg class="gauge" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="{{ '%.1f'|format(tokens) }} of {{ '%.0f'|format(capacity) }} tokens ready">
+            <rect class="m-track" x="0" y="0" width="100" height="8" rx="4"></rect>
+            <rect class="chart-bar" x="0" y="0" width="{{ (100 * tokens / capacity)|round(1) }}" height="8" rx="4"></rect>
+          </svg>
+          <span class="small">{{ '%.1f'|format(tokens) }} of {{ '%.0f'|format(capacity) }} ready &middot; {{ g.workspace.send_rate|round(1) }} a second{% if slow %} <strong>(half speed after a "too many")</strong>{% endif %}</span></dd>
+        <dt>Today</dt>
+        <dd>
+          <svg class="gauge" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="{{ sent_today }} of {{ g.workspace.daily_cap }} today">
+            <rect class="m-track" x="0" y="0" width="100" height="8" rx="4"></rect>
+            <rect class="chart-bar" x="0" y="0" width="{{ [100, (100 * sent_today / g.workspace.daily_cap)]|min|round(1) }}" height="8" rx="4"></rect>
+          </svg>
+          <span class="small">{{ sent_today|number }} of {{ g.workspace.daily_cap|number }} emails (resets at midnight UTC)</span></dd>
+      </dl>
+      <div class="switch-row">
+        {% if curtain and curtain.state != 'closed' %}
+          <form method="post" action="{{ url_for('backstage.raise_curtain') }}">{{ csrf() }}<button class="button" type="submit">Raise the curtain</button></form>
+        {% endif %}
+        <form method="post" action="{{ url_for('backstage.pause') }}">
+          {{ csrf() }}<input type="hidden" name="paused" value="{{ 'no' if g.workspace.sending_paused else 'yes' }}">
+          <button class="button {{ 'button-go' if g.workspace.sending_paused else 'button-danger' }}" type="submit">{{ 'Resume all sending' if g.workspace.sending_paused else 'Pause all sending' }}</button>
+        </form>
+      </div>
+      {% if g.workspace.sending_paused %}<p class="field-error">Sending is paused: emails wait in the wings (no tries are used up).</p>{% endif %}
+    </section>
+  </div>
+{% endblock %}

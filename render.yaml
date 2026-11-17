@@ -1,0 +1,51 @@
+# Render "Blueprint": tells Render how to build and run Right On Cue.
+# Render reads this file when you choose New -> Blueprint and pick this repo.
+# The service name becomes the web address: right-on-cue.onrender.com
+# (Render adds a few letters if that name is already taken).
+# Every merge into main deploys the site again by itself.
+#
+# Render's free plan forgets its own files on every restart, so the data lives
+# in Neon (free PostgreSQL). The step-by-step guide is docs/DEPLOY.md.
+services:
+  - type: web
+    name: right-on-cue
+    runtime: python  # the version comes from the .python-version file
+    plan: free  # sleeps after 15 quiet minutes; the next visit (or the timer) wakes it (about 30-50 s)
+    region: singapore  # close to the Philippines, and to Neon's Singapore database
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    # First upgrade-db runs the Alembic migrations (it keeps all data, and does
+    # nothing when the tables are up to date). Then gunicorn serves the app.
+    # ONE process with several threads: the background worker is a thread inside
+    # the web app (Render's free plan has no separate worker service), and one
+    # process means one crew. More processes would also be safe (the queue never
+    # gives one job to two workers), just busier for the free database.
+    startCommand: flask --app oncue upgrade-db && gunicorn "oncue:create_app()" --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 120
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      # Signs the login cookie and every link in every email (unsubscribe, opens,
+      # clicks). Render makes a long random one. Never change it later: links in
+      # emails already sent would stop working.
+      - key: SECRET_KEY
+        generateValue: true
+      # The secret the GitHub Actions timer sends to /tasks/tick (copy it into the
+      # repo's TICK_KEY secret). Render makes it.
+      - key: TICK_KEY
+        generateValue: true
+      # The secret part of the address Brevo posts delivery news to
+      # (https://<site>/hooks/brevo/<this>). Render makes it.
+      - key: BREVO_WEBHOOK_SECRET
+        generateValue: true
+      # The site's own address, for links inside emails, like
+      # https://right-on-cue.onrender.com (docs/DEPLOY.md, part 2).
+      - key: BASE_URL
+        sync: false
+      # Neon's connection string (postgresql://...). Render asks for these when
+      # you make the Blueprint; they are never written in this file.
+      - key: DATABASE_URL
+        sync: false
+      # Brevo, for real emails (docs/DEPLOY.md, part 4). Without it, the owner
+      # sends to the practice mail server too.
+      - key: BREVO_API_KEY
+        sync: false
