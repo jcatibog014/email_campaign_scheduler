@@ -4,7 +4,7 @@
 // without a connection a small "You're offline" page shows instead.
 "use strict";
 
-const CACHE = "oncue-v1"; // change the number when these files change
+const CACHE = "oncue-v2"; // change the number when these files change
 const FILES = [
   "/static/style.css",
   "/static/app.js",

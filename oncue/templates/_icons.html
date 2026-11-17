@@ -1,10 +1,12 @@
 {# Line icons, drawn here so no icon font or outside file is needed. #}
 
-{# The app's mark: an envelope centre stage under a spotlight (static/icons/logo.svg, copied by
-   docs/make_icons.py from docs/logo/right-on-cue.svg). A picture file, not drawn inline: its
-   gradients have ids that would clash when the logo shows twice on a page. #}
+{# The app's mark: the owner's drawing of a gold spotlight shining on an envelope (static/icons/logo.svg,
+   copied unchanged by docs/make_icons.py from docs/logo/right-on-cue-spotlight-v2.svg). It has no
+   background, so it stands on the velvet. A picture file, not drawn inline: its gradients and filters
+   have ids that would clash when the logo shows twice on a page. size is its height; the drawing is
+   280 x 352, a little taller than wide. #}
 {% macro logo(size=34) %}
-  <img class="logo-mark" src="{{ url_for('static', filename='icons/logo.svg') }}" width="{{ size }}" height="{{ size }}" alt="">
+  <img class="logo-mark" src="{{ url_for('static', filename='icons/logo.svg') }}" width="{{ (size * 280 / 352)|round|int }}" height="{{ size }}" alt="">
 {% endmacro %}
 
 {% macro icon(name, size=18) %}

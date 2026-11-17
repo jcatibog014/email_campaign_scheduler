@@ -16,7 +16,7 @@ Python 3.13 is at `%LOCALAPPDATA%\Programs\Python\Python313\python.exe`. Use the
 - Test: `.venv\Scripts\python -m pytest`. Every test gets a fresh SQLite file and never uses the internet. Set `TEST_DATABASE_URL` to an **empty** Neon branch to run the same tests on PostgreSQL (each test drops and remakes the tables). SQLAlchemy warnings fail the tests (`pytest.ini`).
 - Other commands: `set-password <email>`, `worker` (a worker in its own window; Ctrl+C stops it after the job in hand; `--once` runs until nothing is due), `tick` (the timer once).
 - To watch two workers share the work: run the app with `RUN_WORKER=0` (`$env:RUN_WORKER = '0'` in PowerShell) and start `flask --app oncue worker` in two windows.
-- Logo and app icons: `docs/logo/right-on-cue.svg` (an envelope centre stage under a spotlight, on a velvet tile). `..\expense_tracker\.venv\Scripts\python docs\make_icons.py` (Playwright + Edge) copies it to `oncue/static/icons/logo.svg` and draws every PNG icon and `favicon.ico`. Run it after changing the drawing.
+- Logo and app icons: the owner's own drawing, `docs/logo/right-on-cue-spotlight-v2.svg` (a gold spotlight shining on an envelope with a gold seal; no background; 280 x 352). `..\expense_tracker\.venv\Scripts\python docs\make_icons.py` (Playwright + Edge) copies it unchanged to `oncue/static/icons/logo.svg` (shown by `logo()` in `_icons.html` as an `<img>`, height = size, standing on the velvet), and draws every PNG icon and `favicon.ico` with the drawing on a velvet tile (round corners; square for iPhone; smaller for Android's maskable icon). Run it after changing the drawing.
 
 ## Architecture
 
