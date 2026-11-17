@@ -53,9 +53,12 @@ def test_the_app_can_be_installed(client):
     assert "worker-src 'self'" in client.get("/login").headers["Content-Security-Policy"]
 
 
-def test_the_logo_is_the_spotlit_envelope(client):
-    source = (ICONS.parent.parent.parent / "docs" / "logo" / "right-on-cue.svg").read_text(encoding="utf-8")
-    assert (ICONS / "logo.svg").read_text(encoding="utf-8") == source  # make_icons.py copies it exactly
+def test_the_logo_is_the_owners_spotlight_drawing(client):
+    source = (ICONS.parent.parent.parent / "docs" / "logo" / "right-on-cue-spotlight-v2.svg").read_text(encoding="utf-8")
+    logo = (ICONS / "logo.svg").read_text(encoding="utf-8")
+    assert logo == source  # make_icons.py copies the owner's drawing exactly
+    assert 'viewBox="60 4 280 352"' in logo and 'id="lamp"' in logo
+    assert not (ICONS.parent.parent.parent / "docs" / "logo" / "right-on-cue.svg").exists()
     page = client.get("/login").get_data(as_text=True)
-    assert 'icons/logo.svg" width="64" height="64"' in page
+    assert 'icons/logo.svg" width="67" height="84"' in page  # its own shape: 280 x 352
     assert client.get("/static/icons/logo.svg").mimetype == "image/svg+xml"
