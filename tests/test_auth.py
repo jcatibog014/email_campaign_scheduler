@@ -7,7 +7,7 @@ from .conftest import PASSWORD, browser, get_user, is_logged_in, make_owner, pos
 
 def test_the_login_page_has_only_the_login_and_the_demo(client):
     page = text(client.get("/login"))
-    assert "Log in" in page and "Try demo" in page
+    assert "Log in" in page and "Try the demo" in page
     assert "create-owner" not in page and "Setting up this site" not in page
 
 
