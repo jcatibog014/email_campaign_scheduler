@@ -33,6 +33,10 @@ Try it: on the login page, press **Try the demo**. You get your own sample theat
 
 ![Scheduling: once, at their own time, or every week](docs/screenshots/show-schedule.png)
 
+Before something big (Start now, Delete, Resend), the app asks first, in its own look:
+
+![Asking before Start now](docs/screenshots/confirm.png)
+
 ### What Happened to Each Email
 
 - Every email has a **timeline**: in the wings, sent, delivered, opened, clicked, bounced.

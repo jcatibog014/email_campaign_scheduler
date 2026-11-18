@@ -391,6 +391,13 @@ html:not(.js) .js-only { display: none !important; }
 .button-quiet:hover { background: var(--surface-soft); color: var(--ink); border-color: var(--control-border); }
 .button-danger { background: transparent; color: var(--danger); border-color: var(--danger); }
 .button-danger:hover { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+
+/* "Are you sure?" (app.js ask()): a cue card held up over the dimmed stage. */
+.confirm-dialog { width: min(calc(100vw - 2rem), 28rem); margin: auto; padding: 1.4rem 1.5rem 1.2rem; border: 1px solid var(--rule); border-top: 5px solid var(--accent); border-radius: var(--radius); background: var(--surface); color: var(--ink); box-shadow: 0 18px 48px rgb(30 10 15 / .35); }
+.confirm-dialog.is-danger { border-top-color: var(--danger); }
+.confirm-dialog.is-go { border-top-color: var(--ok); }
+.confirm-dialog::backdrop { background: rgb(20 6 12 / .55); }
+.confirm-question { margin: 0 0 1.3rem; font-size: 1.05rem; line-height: 1.5; }
 .button-go { background: var(--ok); border-color: var(--ok); color: #fff; }
 :root[data-theme="dark"] .button-go { color: #0b2214; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .button-go { color: #0b2214; } }

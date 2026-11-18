@@ -57,16 +57,75 @@ function setUpPopovers() {
   });
 }
 
+// "Are you sure?" in the app's own look (the browser's confirm box can't be styled).
+// Answers true or false. Its main button says what the action does ("Delete list", "Start now").
+let confirmDialog = null;
+function ask(question, action, style) {
+  const danger = style === "button-danger";
+  if (typeof HTMLDialogElement !== "function") return Promise.resolve(confirm(question));
+  if (!confirmDialog) {
+    confirmDialog = document.createElement("dialog");
+    confirmDialog.className = "confirm-dialog";
+    confirmDialog.innerHTML =
+      '<form method="dialog"><p class="confirm-question" id="confirm-question"></p>' +
+      '<div class="form-actions"><button class="button button-quiet" value="cancel">Cancel</button>' +
+      '<button class="button" value="ok" data-confirm-ok></button></div></form>';
+    confirmDialog.setAttribute("aria-labelledby", "confirm-question");
+    // A click on the dimmed page around it is a Cancel.
+    confirmDialog.addEventListener("click", (event) => {
+      if (event.target === confirmDialog) confirmDialog.close("cancel");
+    });
+    document.body.append(confirmDialog);
+  }
+  const ok = confirmDialog.querySelector("[data-confirm-ok]");
+  confirmDialog.querySelector(".confirm-question").textContent = question;
+  ok.textContent = action || "OK";
+  ok.className = style ? `button ${style}` : "button";
+  confirmDialog.classList.toggle("is-danger", danger);
+  confirmDialog.classList.toggle("is-go", style === "button-go");
+  confirmDialog.returnValue = "";
+  confirmDialog.showModal();
+  // Deleting: Cancel has the focus, so Enter is the safe choice. Otherwise the action has it.
+  (danger ? confirmDialog.querySelector('[value="cancel"]') : ok).focus();
+  return new Promise((resolve) => {
+    confirmDialog.addEventListener("close", () => resolve(confirmDialog.returnValue === "ok"), { once: true });
+  });
+}
+
+// The words and colour of the button that was pressed, for the dialog's own button:
+// red for a delete, green for Start now; otherwise the usual main button.
+function actionOf(button) {
+  const styles = ["button-danger", "button-go"];
+  return {
+    action: button ? button.textContent.replace(/\s+/g, " ").trim() : "",
+    style: (button && styles.find((style) => button.classList.contains(style))) || "",
+  };
+}
+
 function setUpConfirm() {
+  const approved = new WeakSet();
   document.querySelectorAll("form[data-confirm]").forEach((form) => {
-    form.addEventListener("submit", (event) => {
-      if (!confirm(form.dataset.confirm)) event.preventDefault();
+    form.addEventListener("submit", async (event) => {
+      if (approved.has(form)) return approved.delete(form);
+      event.preventDefault();
+      const submitter = event.submitter || form.querySelector('[type="submit"]');
+      const { action, style } = actionOf(submitter);
+      if (await ask(form.dataset.confirm, action, style)) {
+        approved.add(form);
+        form.requestSubmit(submitter && submitter.form === form ? submitter : undefined);
+      }
     });
   });
   // One button of a form that needs asking first (Delete, beside Save).
   document.querySelectorAll("button[data-confirm-button]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      if (!confirm(button.dataset.confirmButton)) event.preventDefault();
+    button.addEventListener("click", async (event) => {
+      if (approved.has(button)) return approved.delete(button);
+      event.preventDefault();
+      const { action, style } = actionOf(button);
+      if (await ask(button.dataset.confirmButton, action, style)) {
+        approved.add(button);
+        button.click();
+      }
     });
   });
 }
