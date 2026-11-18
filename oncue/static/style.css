@@ -48,6 +48,7 @@
   --velvet-light: #8e2442;
   --velvet-ink: #fbefe2;
   --velvet-muted: #e7c9bf;
+  --velvet-veil: rgb(20 2 9 / .45);
   --gold: #d4a017;
   --gold-soft: #f3d37a;
   --bulb: #ffd166;
@@ -102,7 +103,7 @@
     --rule: #3c2e38; --control-border: #806c72; --accent: #f2a93b; --accent-hover: #f7bf63;
     --accent-soft: #3b2a12; --on-accent: #1d1208; --link: #f5b85a; --focus: #f2a93b;
     --danger: #f87171; --danger-soft: #3d1717; --ok: #6ee7a0; --ok-soft: #12301f;
-    --velvet: #52102a; --velvet-deep: #2a0614; --velvet-light: #701d3a; --velvet-ink: #fbefe2; --velvet-muted: #dcbab2;
+    --velvet: #52102a; --velvet-deep: #2a0614; --velvet-light: #701d3a; --velvet-ink: #fbefe2; --velvet-muted: #dcbab2; --velvet-veil: rgb(10 1 5 / .4);
     --gold: #c9971a; --bulb: #ffd166; --bulb-dim: #5a4220; --marquee-frame: #0d0806;
     --wood: #6e4527; --wood-deep: #4a2c16; --wood-light: #8a5a34; --spot: rgb(255 190 90 / .2);
     --cork: #8a6a46; --cork-dot: #6b4f30; --card-paper: #f6efe1; --card-rule: #b7c7de; --card-margin: #d98a86;
@@ -123,7 +124,7 @@
   --rule: #3c2e38; --control-border: #806c72; --accent: #f2a93b; --accent-hover: #f7bf63;
   --accent-soft: #3b2a12; --on-accent: #1d1208; --link: #f5b85a; --focus: #f2a93b;
   --danger: #f87171; --danger-soft: #3d1717; --ok: #6ee7a0; --ok-soft: #12301f;
-  --velvet: #52102a; --velvet-deep: #2a0614; --velvet-light: #701d3a; --velvet-ink: #fbefe2; --velvet-muted: #dcbab2;
+  --velvet: #52102a; --velvet-deep: #2a0614; --velvet-light: #701d3a; --velvet-ink: #fbefe2; --velvet-muted: #dcbab2; --velvet-veil: rgb(10 1 5 / .4);
   --gold: #c9971a; --bulb: #ffd166; --bulb-dim: #5a4220; --marquee-frame: #0d0806;
   --wood: #6e4527; --wood-deep: #4a2c16; --wood-light: #8a5a34; --spot: rgb(255 190 90 / .2);
   --cork: #8a6a46; --cork-dot: #6b4f30; --card-paper: #f6efe1; --card-rule: #b7c7de; --card-margin: #d98a86;
@@ -177,6 +178,14 @@ html:not(.js) .js-only { display: none !important; }
     linear-gradient(180deg, rgb(0 0 0 / .32), transparent 14%, transparent 78%, rgb(0 0 0 / .38)),
     repeating-linear-gradient(90deg, var(--velvet-deep) 0, var(--velvet) 9px, var(--velvet-light) 17px, var(--velvet) 26px, var(--velvet-deep) 36px);
   color: var(--velvet-ink);
+}
+/* The sidebar's and the login panel's curtain hangs in shadow: wider, softer folds under a
+   dark veil, so the words sit on an even background instead of crossing bright and dark stripes. */
+.sidebar.velvet, .welcome-panel.velvet {
+  background-color: var(--velvet-deep);
+  background-image:
+    linear-gradient(0deg, var(--velvet-veil), var(--velvet-veil)),
+    repeating-linear-gradient(90deg, var(--velvet-deep) 0, var(--velvet) 22px, var(--velvet-deep) 44px);
 }
 
 /* The valance: a velvet band, scallops hanging from it, a gold fringe under the scallops. */
