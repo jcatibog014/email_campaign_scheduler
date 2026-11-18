@@ -490,7 +490,6 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent-soft) 45%, transpar
 .or-line { color: var(--muted); font-size: .9rem; }
 .card-note { margin-top: 1rem; color: var(--muted); font-size: .9rem; }
 .demo-card { text-align: center; }
-.demo-card p { color: var(--muted); margin: .35rem 0 .9rem; }
 @media (max-width: 52rem) {
   .welcome { grid-template-columns: 1fr; }
   .welcome-panel { padding-bottom: 2rem; }

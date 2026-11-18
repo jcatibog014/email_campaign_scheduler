@@ -31,9 +31,7 @@
         {% endif %}
       </div>
       <p class="or-line">or</p>
-      <div class="card demo-card">
-        <h2>Just Looking?</h2>
-        <p>Your own sample theatre company. Every email goes to a practice mail server. Deleted after 24 hours.</p>
+      <div class="demo-card">
         <form method="post" action="{{ url_for('demo.start') }}">
           {{ csrf() }}
           <button class="button button-quiet" type="submit">Try demo</button>
