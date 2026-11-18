@@ -16,9 +16,10 @@
    Colours are tokens on :root. Dark mode is defined twice (the device setting,
    and the choice in Settings): change both blocks together. */
 
-@font-face { font-family: "Playfair Display"; font-weight: 700; font-display: swap; src: url("fonts/playfair-display-700.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-weight: 400; font-display: swap; src: url("fonts/inter-latin-400-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-weight: 600; font-display: swap; src: url("fonts/inter-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fredoka"; font-weight: 700; font-display: swap; src: url("fonts/fredoka-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Nunito"; font-weight: 400; font-display: swap; src: url("fonts/nunito-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Nunito"; font-weight: 600; font-display: swap; src: url("fonts/nunito-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Nunito"; font-weight: 700; font-display: swap; src: url("fonts/nunito-latin-700-normal.woff2") format("woff2"); }
 @font-face { font-family: "Saira Condensed"; font-weight: 700; font-display: swap; src: url("fonts/saira-condensed-700.woff2") format("woff2"); }
 
 :root {
@@ -91,8 +92,8 @@
   --radius-small: 4px;
   --control-height: 2.5rem;
   --shadow: 0 1px 2px rgb(60 30 20 / .08), 0 4px 14px rgb(60 30 20 / .06);
-  --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
-  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Fredoka", "Nunito", system-ui, sans-serif;
+  --font-body: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-label: "Saira Condensed", "Arial Narrow", system-ui, sans-serif;
 }
 
