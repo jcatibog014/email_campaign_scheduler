@@ -179,9 +179,9 @@ html:not(.js) .js-only { display: none !important; }
     repeating-linear-gradient(90deg, var(--velvet-deep) 0, var(--velvet) 9px, var(--velvet-light) 17px, var(--velvet) 26px, var(--velvet-deep) 36px);
   color: var(--velvet-ink);
 }
-/* The sidebar's curtain hangs in shadow: wider, softer folds under a dark veil, so the
-   menu's words sit on an even background instead of crossing bright and dark stripes. */
-.sidebar.velvet {
+/* The sidebar's and the login panel's curtain hangs in shadow: wider, softer folds under a
+   dark veil, so the words sit on an even background instead of crossing bright and dark stripes. */
+.sidebar.velvet, .welcome-panel.velvet {
   background-color: var(--velvet-deep);
   background-image:
     linear-gradient(0deg, var(--velvet-veil), var(--velvet-veil)),
