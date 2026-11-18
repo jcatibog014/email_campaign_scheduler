@@ -1,7 +1,7 @@
 """Try Demo: one click, and the visitor has their own sample workspace for 24 hours."""
 from flask import Blueprint, current_app, flash, g, redirect, url_for
 
-from .. import db, limits, seed
+from .. import db, limits, seed, worker
 from ..auth import log_in
 from ..dates import utcnow
 
@@ -28,6 +28,9 @@ def start():
         return redirect(url_for("auth.login"))
     me = seed.build(s, moment)
     s.commit()
+    # Its past is waiting to be replayed and a show goes on Go in a minute: wake the crew,
+    # which may be asleep for up to half an hour when nothing else is due.
+    worker.nudge()
     log_in(me)
     # Shown once, as a toast (_toasts.html); the small Demo tag in the menu stays.
     flash("You are Luna, who runs Teatro Luna's emails. Everything goes to a practice mail server, never a "

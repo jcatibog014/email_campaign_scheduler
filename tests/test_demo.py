@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from sqlalchemy import select
 
-from oncue import audience, db, seed
+from oncue import audience, db, seed, worker
 from oncue.dates import utcnow
 from oncue.models import Contact, ContactList, Script, Segment, Show, User, Workspace
 
@@ -26,6 +26,14 @@ def test_try_demo_gives_a_sandbox_of_your_own(app):
     page = text(first.get("/stage", follow_redirects=True))
     assert "Teatro Luna" in page and ">Demo<" in page and "practice mail server" in page
     assert is_logged_in(second)
+
+
+def test_starting_a_demo_wakes_the_crew(app, monkeypatch):
+    """Its replay and its one-minute show mustn't wait for a sleeping worker (up to 30 min)."""
+    woken = []
+    monkeypatch.setattr(worker, "nudge", lambda: woken.append(True))
+    start_demo(app)
+    assert woken == [True]
 
 
 def test_the_demo_audience_has_examples_on_every_page(app):
