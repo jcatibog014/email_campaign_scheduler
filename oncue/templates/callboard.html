@@ -9,7 +9,9 @@
   {% with view='week', range_label=days[0]|short_date ~ ' – ' ~ days[-1]|short_date,
           prev_url=url_for('callboard.board', week=offset - 1), next_url=url_for('callboard.board', week=offset + 1),
           now_url=url_for('callboard.board') %}{% include "_board_tabs.html" %}{% endwith %}
-  <div class="corkboard week-board">
+  <div class="corkboard">
+  {% include "_board_lane.html" %}
+  <div class="week-board">
     {% for day in days %}
       {% set cards = by_day.get(day, []) %}
       <section class="board-day{% if day == today %} is-today{% endif %}{% if not cards %} is-empty{% endif %}" aria-label="{{ day.strftime('%A') }}, {{ day|short_date }}">
@@ -21,6 +23,7 @@
         {% endfor %}
       </section>
     {% endfor %}
+  </div>
   </div>
   <p class="muted small top-gap">Times are {{ g.workspace.time_zone.replace('_', ' ') }}. A show sent in each person's own time zone is pinned where its first emails go.</p>
 {% endblock %}

@@ -135,7 +135,12 @@ def schedule_weekly(s, show, workspace, days, local_clock, now):
 
 def describe_repeat(show):
     days = days_of(show)
-    names = "weekday" if days == [0, 1, 2, 3, 4] else ", ".join(WEEKDAYS[day] for day in days)
+    if days == list(range(7)):
+        names = "day"
+    elif days == [0, 1, 2, 3, 4]:
+        names = "weekday"
+    else:
+        names = ", ".join(WEEKDAYS[day] for day in days)
     clock = parse_clock(show.repeat_time)
     return f"Every {names} at {clock.hour % 12 or 12}:{clock.minute:02d} {'AM' if clock.hour < 12 else 'PM'}"
 

@@ -10,7 +10,9 @@
           prev_url=url_for('callboard.board', view='month', month=offset - 1),
           next_url=url_for('callboard.board', view='month', month=offset + 1),
           now_url=url_for('callboard.board', view='month') %}{% include "_board_tabs.html" %}{% endwith %}
-  <div class="corkboard month-board">
+  <div class="corkboard">
+  {% include "_board_lane.html" %}
+  <div class="month-board">
     <div class="month-head" aria-hidden="true">{% for name in ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun') %}<span class="tape">{{ name }}</span>{% endfor %}</div>
     {% for week in weeks %}
       <div class="month-week">
@@ -27,5 +29,6 @@
         {% endfor %}
       </div>
     {% endfor %}
+  </div>
   </div>
 {% endblock %}

@@ -19,16 +19,24 @@
       <p class="muted small">Workers take jobs from the queue. Each writes a heartbeat every round; one silent for two minutes has gone quiet.</p>
       {% if crew %}
         <ul class="plain-list top-gap">
-          {% for row, state in crew %}
+          {% for row, state, label in crew %}
             <li class="list-row">
-              <span class="crew-lamp crew-{{ state }}" aria-hidden="true"></span>
-              <span class="grow"><strong>{{ row.id }}</strong><br><span class="muted small">{{ row.kind }} &middot; {{ row.jobs_done|number }} jobs &middot; started {{ row.started_at|ago }}</span></span>
-              <span class="small nowrap">{% if state == 'on' %}On duty{% elif state == 'off' %}Off duty{% else %}Gone quiet{% endif %}<br><span class="muted">seen {{ row.last_seen|ago }}</span></span>
+              <span class="grow"><strong>{{ label }}</strong> <span class="muted small">{{ row.id }}</span><br>
+                <span class="muted small">{{ row.jobs_done|number }} jobs &middot; started {{ row.started_at|ago }} &middot; seen {{ row.last_seen|ago }}</span></span>
+              <span class="crew-state small nowrap"><span class="crew-lamp crew-{{ state }}" aria-hidden="true"></span>{% if state == 'on' %}On duty{% elif state == 'off' %}Off duty{% else %}Gone quiet{% endif %}</span>
             </li>
           {% endfor %}
         </ul>
+        {% if crew|selectattr(1, 'equalto', 'quiet')|list %}
+          <p class="muted small top-gap">A worker that has gone quiet probably stopped (a restart, a crash). Its unfinished jobs come back by themselves when their lease runs out, for another worker.</p>
+        {% endif %}
       {% else %}
-        <p class="muted top-gap">No worker has reported in yet. The web app starts one with its first page; `flask --app oncue worker` starts one in its own window.</p>
+        <p class="muted top-gap">No worker has reported in yet.</p>
+      {% endif %}
+      {% if not on_duty %}
+        <form class="top-gap" method="post" action="{{ url_for('backstage.start_crew') }}">{{ csrf() }}
+          <button class="button" type="submit">Start a worker</button>
+          <span class="muted small">in this web app. (`flask --app oncue worker` starts one in its own window.)</span></form>
       {% endif %}
     </section>
 
@@ -36,17 +44,18 @@
       <h2>Sending</h2>
       <p class="muted small">With {{ mailer_label|lower if mailer == 'practice' else mailer_label }}.</p>
       <dl class="facts">
-        <dt>Safety Curtain</dt>
-        <dd>{% if curtain and curtain.state != 'closed' %}{{ cue(CUE_WORDS.safety_curtain) }} <span class="small">{{ 'testing with one email' if curtain.state == 'half_open' else 'until ' ~ curtain.retry_at|clock }}</span>
-              <div class="muted small">{{ curtain.last_error }}</div>
-            {% else %}Up <span class="muted small">({{ curtain.failures if curtain else 0 }} of {{ trip_after }} failures in a row)</span>{% endif %}</dd>
-        <dt>Pace</dt>
-        <dd>
-          <svg class="gauge" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="{{ '%.1f'|format(tokens) }} of {{ '%.0f'|format(capacity) }} tokens ready">
+        <dt>Auto-pause</dt>
+        <dd>{% if curtain and curtain.state != 'closed' %}<strong>On:</strong> {{ 'testing with one email' if curtain.state == 'half_open' else 'sending stopped until ' ~ curtain.retry_at|clock }}
+              <div class="muted small">The Safety Curtain came down after {{ trip_after }} failures in a row: {{ curtain.last_error }}</div>
+            {% else %}Off: sending as usual
+              <div class="muted small">The Safety Curtain comes down by itself after {{ trip_after }} failures in a row ({{ curtain.failures if curtain else 0 }} now).</div>{% endif %}</dd>
+        <dt>Sending speed</dt>
+        <dd><strong>{{ '%g'|format(g.workspace.send_rate) }} {{ 'email' if g.workspace.send_rate == 1 else 'emails' }} a second</strong>{% if slow %} <span class="small">(half speed for now, after a "too many")</span>{% endif %}
+          <svg class="gauge" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="{{ tokens|round|int }} of {{ capacity|round|int }} ready to go now">
             <rect class="m-track" x="0" y="0" width="100" height="8" rx="4"></rect>
             <rect class="chart-bar" x="0" y="0" width="{{ (100 * tokens / capacity)|round(1) }}" height="8" rx="4"></rect>
           </svg>
-          <span class="small">{{ '%.1f'|format(tokens) }} of {{ '%.0f'|format(capacity) }} ready &middot; {{ g.workspace.send_rate|round(1) }} a second{% if slow %} <strong>(half speed after a "too many")</strong>{% endif %}</span></dd>
+          <span class="muted small">{{ tokens|round|int }} of {{ capacity|round|int }} ready to go right now</span></dd>
         <dt>Today</dt>
         <dd>
           <svg class="gauge" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="{{ sent_today }} of {{ g.workspace.daily_cap }} today">
@@ -57,7 +66,7 @@
       </dl>
       <div class="switch-row">
         {% if curtain and curtain.state != 'closed' %}
-          <form method="post" action="{{ url_for('backstage.raise_curtain') }}">{{ csrf() }}<button class="button" type="submit">Raise the curtain</button></form>
+          <form method="post" action="{{ url_for('backstage.raise_curtain') }}">{{ csrf() }}<button class="button" type="submit">Resume sending now</button></form>
         {% endif %}
         <form method="post" action="{{ url_for('backstage.pause') }}">
           {{ csrf() }}<input type="hidden" name="paused" value="{{ 'no' if g.workspace.sending_paused else 'yes' }}">

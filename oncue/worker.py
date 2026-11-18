@@ -77,14 +77,20 @@ def run_round(s, worker_id, now, rng=random, workspace_id=None):
 
 
 def next_event(s, now, workspace_id=None):
-    """When something will next need a worker: a queued job, a show on Standby, a lease to check."""
+    """When something will next need a worker: a queued job, a show on Standby, a lease to check.
+
+    Leases only matter to the live crew (it runs the reaper). A one-workspace replay must not
+    look at them: another worker's lease that ran out while that worker was dead is a moment in
+    the past, and a replay jumping to it would jump to the same moment forever."""
     moments = [
         queue.next_due(s, workspace_id),
         s.scalar(select(Show.send_at).where(Show.status == shows.STANDBY,
                                             queue.in_scope(Show.workspace_id, workspace_id))
                  .order_by(Show.send_at).limit(1)),
-        s.scalar(select(Job.lease_until).where(Job.status == queue.RUNNING).order_by(Job.lease_until).limit(1)),
     ]
+    if workspace_id is None:
+        moments.append(s.scalar(select(Job.lease_until).where(Job.status == queue.RUNNING)
+                                .order_by(Job.lease_until).limit(1)))
     moments = [moment for moment in moments if moment is not None]
     return min(moments) if moments else None
 
@@ -130,18 +136,25 @@ class Crew:
         self.wake.set()
 
 
-_in_app = {"crew": None}
+_in_app = {"crew": None, "thread": None}
 _lock = threading.Lock()
 
 
+def in_app_running():
+    thread = _in_app["thread"]
+    return thread is not None and thread.is_alive()
+
+
 def start_in_app(app):
-    """The worker thread inside the web app: started once per process, on the first request."""
+    """The worker thread inside the web app: started once per process, on the first request,
+    and again if it has stopped (Backstage's Start a Worker button)."""
     with _lock:
-        if _in_app["crew"] is not None:
+        if in_app_running():
             return _in_app["crew"]
         crew = Crew(app, "in the web app")
-        threading.Thread(target=crew.loop, name="oncue-worker", daemon=True).start()
-        _in_app["crew"] = crew
+        thread = threading.Thread(target=crew.loop, name="oncue-worker", daemon=True)
+        thread.start()
+        _in_app["crew"], _in_app["thread"] = crew, thread
         return crew
 
 
@@ -179,7 +192,9 @@ def simulate(s, start, until, worker_id="rehearsal", rng=None, workspace_id=None
         upcoming = next_event(s, now, workspace_id)
         if upcoming is None or upcoming > until:
             break
-        now = max(now, upcoming)
+        # Always move forward: a "next" moment that isn't later than now (something nothing in
+        # this round could run) must never make the loop stand still.
+        now = max(now + timedelta(milliseconds=1), upcoming)
     sign_off(s, worker_id, min(now, until))
     return now
 

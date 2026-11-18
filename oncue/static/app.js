@@ -239,3 +239,18 @@ function setUpReplayWatch() {
   setInterval(check, 3000);
 }
 setUps.push(setUpReplayWatch);
+
+// The show page's scheduling form: only the boxes of the chosen When show.
+function setUpScheduleForm() {
+  const form = document.querySelector("[data-schedule]");
+  if (!form) return;
+  const show = () => {
+    const chosen = form.querySelector('input[name="mode"]:checked');
+    form.querySelectorAll("[data-mode]").forEach((fields) => {
+      fields.hidden = !chosen || fields.dataset.mode !== chosen.value;
+    });
+  };
+  form.querySelectorAll('input[name="mode"]').forEach((radio) => radio.addEventListener("change", show));
+  show();
+}
+setUps.push(setUpScheduleForm);

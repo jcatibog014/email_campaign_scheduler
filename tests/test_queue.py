@@ -211,6 +211,26 @@ def test_the_worker_sleeps_until_the_next_thing(ctx):
     assert worker.seconds_to_sleep(ctx, T0) == worker.POLL_MIN  # overdue: straight back to work
 
 
+def test_a_dead_workers_old_lease_never_stalls_a_replay(ctx):
+    """A worker died holding a job: its lease ran out in the past. A one-workspace replay
+    must not keep jumping to that moment (it once spun forever after a server restart)."""
+    from oncue.models import Workspace
+    stuck = queue.enqueue(ctx, "t_ok", run_at=T0)
+    ctx.commit()
+    queue.claim(ctx, "died-in-a-restart", T0)  # running, lease until T0 + 60 s, never finished
+    demo = Workspace(name="Replaying", replaying=True)
+    ctx.add(demo)
+    ctx.commit()
+    queue.enqueue(ctx, "t_ok", run_at=T0 + timedelta(minutes=5), workspace_id=demo.id)
+    ctx.commit()
+    started = time.perf_counter()
+    worker.simulate(ctx, T0 + timedelta(minutes=2), T0 + timedelta(hours=1), workspace_id=demo.id)
+    assert time.perf_counter() - started < 5
+    assert job(ctx, stuck.id).status == "running"  # the live crew's reaper deals with it, not the replay
+    assert ctx.scalar(select(func.count()).select_from(Job).where(Job.workspace_id == demo.id,
+                                                                  Job.status == "done")) == 1
+
+
 def test_backoff_never_waits_more_than_an_hour():
     rng = random.Random(3)
     assert all(1 <= queue.backoff(attempt, rng) <= 3600 for attempt in range(1, 30))

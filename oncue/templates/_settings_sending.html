@@ -10,7 +10,7 @@
       <label class="check"><input type="radio" name="mailer" value="practice"{% if g.workspace.mailer != 'brevo' or not brevo_ready %} checked{% endif %}>
         <span>{{ mailer_labels.practice }}<br><span class="muted small">Nothing reaches a real inbox. Its inbox is in Backstage.</span></span></label>
       <label class="check"><input type="radio" name="mailer" value="brevo"{% if g.workspace.mailer == 'brevo' and brevo_ready %} checked{% endif %}{% if not brevo_ready %} disabled{% endif %}>
-        <span>{{ mailer_labels.brevo }}<br><span class="muted small">{% if g.workspace.is_demo %}Not in the demo.{% elif brevo_ready %}Real inboxes. Free plan: 300 a day.{% else %}Set BREVO_API_KEY on the server first.{% endif %}</span></span></label>
+        <span>{{ mailer_labels.brevo }} <span class="live-tag">Live: sends real emails</span><br><span class="muted small">{% if g.workspace.is_demo %}Not in the demo.{% elif brevo_ready %}Real inboxes. Free plan: 300 a day.{% else %}Set BREVO_API_KEY on the server first.{% endif %}</span></span></label>
     </fieldset>
     {% if errors.mailer %}<p class="field-error">{{ errors.mailer }}</p>{% endif %}
     <div class="form-row">
