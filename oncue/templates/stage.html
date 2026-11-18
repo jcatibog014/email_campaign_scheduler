@@ -39,7 +39,7 @@
               <a class="cue-card" href="{{ url_for('shows.page', show_id=show.id) }}">
                 <strong class="cue-card-title">{{ show.name }}</strong>
                 <span class="cue-card-time">{{ show.send_at|nice_datetime }}</span>
-                <span class="cue-card-meta">{{ labels[show.id] }} &middot; {{ show.send_at|from_now }}</span>
+                <span class="cue-card-meta">{{ labels[show.id] }} &middot; <span class="nowrap">{{ show.send_at|from_now }}</span></span>
               </a>
             {% endfor %}
           </div>
