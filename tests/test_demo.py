@@ -70,7 +70,7 @@ def test_the_replayed_past_fills_every_page(app):
     from oncue import worker
     from oncue.models import Contact as ContactModel, Job, Message
     client = start_demo(app)
-    assert "replaying Teatro Luna" in text(client.get("/stage"))
+    assert "Replaying Teatro Luna" in text(client.get("/stage"))
     with app.app_context():
         s = db.session()
         workspace_id = s.scalar(select(Workspace.id).where(Workspace.is_demo.is_(True)))
@@ -79,12 +79,14 @@ def test_the_replayed_past_fills_every_page(app):
         worker.run_until_idle(s, worker_id="live")
         workspace = s.get(Workspace, workspace_id)
         assert workspace.replaying is False
+        from oncue.models import Worker
+        assert s.get(Worker, f"replay-{workspace_id}") is None  # the replay leaves no worker row
         finished = s.scalar(select(Show).where(Show.workspace_id == workspace_id, Show.name == "Season Opener: Ang Huling Ilaw"))
         assert finished.status == "curtain_down"
         message = s.scalar(select(Message).where(Message.show_id == finished.id).order_by(Message.id))
         contact_with_history = s.scalar(select(ContactModel.id).where(ContactModel.id == message.contact_id))
         weekly = s.scalar(select(Show.id).where(Show.workspace_id == workspace_id, Show.name == "Volunteer Call Sheet"))
-    assert "replaying Teatro Luna" not in text(client.get("/stage"))
+    assert "Replaying Teatro Luna" not in text(client.get("/stage"))
     pages = {
         "/stage": "Ticket Holds Expire Tonight", "/shows/": "Season Opener", "/shows/?tab=done": "October Programme",
         "/shows/?tab=cut": "Rain Delay Notice", f"/shows/{finished.id}": "Results",

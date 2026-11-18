@@ -9,7 +9,8 @@
       {% if found %}<input type="hidden" name="version" value="{{ found.version }}">{% endif %}
       {% if script %}<input type="hidden" name="script_id" value="{{ script.id }}"><p class="muted small">Starting from the script {{ script.name }}. This show gets its own copy.</p>{% endif %}
       {% if errors.version %}<p class="form-error" role="alert">{{ errors.version }}</p>{% endif %}
-      {{ field('name', 'Show name', values.name, errors.name, hint='Only you see it', attrs='required maxlength="120"') }}
+      {{ field('name', 'Show name', values.name, errors.name, attrs='required maxlength="120" aria-describedby="name-help"') }}
+      <p class="field-help" id="name-help">Only you see this name. Your audience sees the subject.</p>
       <label class="field{% if errors.audience %} has-error{% endif %}">
         <span class="field-label">Who gets it <span class="hint">Counts are people who can get emails now</span></span>
         <select name="audience">

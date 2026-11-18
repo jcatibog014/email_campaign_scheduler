@@ -1,0 +1,19 @@
+{% from "_icons.html" import icon %}
+{% from "_macros.html" import show_status %}
+{# Weekly shows, once each: which days and when, and when the next one goes. #}
+{% if weekly %}
+  <section class="board-lane" aria-labelledby="every-week">
+    <div class="lane-head"><h2 id="every-week" class="section-title"><span class="tape tape-gold">Every Week</span></h2>
+      <span class="lane-note">On the days below only once they have gone out.</span></div>
+    <div class="board-lane-cards">
+      {% for show, repeat, audience_label in weekly %}
+        <a class="cue-card board-card{% if show.status in ('go', 'hold') %} is-live{% endif %}" href="{{ url_for('shows.page', show_id=show.id) }}">
+          <span class="cue-card-time">{{ icon('repeat', 13) }} {{ repeat }}</span>
+          <strong class="cue-card-title">{{ show.name }}</strong>
+          <span class="cue-card-meta">{{ audience_label }}{% if show.status == 'standby' %} &middot; next {{ show.send_at|nice_datetime }}{% endif %}</span>
+          <span class="board-stamp">{{ show_status(show.status) }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}

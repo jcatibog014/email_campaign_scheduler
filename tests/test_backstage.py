@@ -61,7 +61,7 @@ def test_reviews_with_and_without_sends(app, owner):
     add_show(app, workspace_id, [f"p{i}@example.com" for i in range(20)] + ["bounce.z@example.com"], send_rate=50)
     page = text(client.get("/reviews/"))
     assert "Delivery Funnel" in page and "First Opens per Day" in page and 'class="chart-bar"' in page
-    assert "Show as a table" in page and "Opening" in page and "mailbox doesn" in page
+    assert "View data table" in page and "Opening" in page and "mailbox doesn" in page
     assert ">21<" in page.replace(" ", "")  # 21 sent
     assert "First Opens per Week" in text(client.get("/reviews/?days=365"))
     assert client.get("/reviews/?days=12345").status_code == 200  # an unknown period falls back to 30 days
@@ -81,7 +81,7 @@ def test_the_crew_and_the_counts(app, owner):
     add_show(app, workspace_id, ["a@example.com", "b@example.com"], sent_ago=timedelta(hours=1))
     page = words(client.get("/backstage/"))
     assert "The Crew" in page and "rehearsal" in page and "Off duty" in page
-    assert "Safety Curtain Up" in page and "of 300 emails" in page
+    assert "Auto-pause Off: sending as usual" in page and "of 300 emails" in page
 
 
 def test_pause_all_sending(app, owner):

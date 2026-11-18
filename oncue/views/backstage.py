@@ -58,9 +58,19 @@ def describe(s, job):
     return ("", None)
 
 
+def crew_label(row):
+    """A worker in words: what kind it is (its id is shown small, for the curious)."""
+    if row.id.startswith("replay-"):
+        return "Demo replay"
+    return {"in the web app": "Web app worker", "own process": "Worker in its own window",
+            "rehearsal": "Practice run"}.get(row.kind, row.kind.capitalize())
+
+
 def crew(s, now):
     rows = []
-    recent = select(Worker).where(Worker.last_seen > now - timedelta(days=1))
+    # Workers seen in the last hour. Older ones (a restart, a deploy) only clutter the list:
+    # their jobs come back by themselves, and the timer forgets them after a day.
+    recent = select(Worker).where(Worker.last_seen > now - timedelta(hours=1))
     for row in s.scalars(recent.order_by(Worker.last_seen.desc()).limit(12)):
         if row.stopped_at:
             state = "off"
@@ -68,7 +78,7 @@ def crew(s, now):
             state = "on"
         else:
             state = "quiet"
-        rows.append((row, state))
+        rows.append((row, state, crew_label(row)))
     return rows
 
 
@@ -103,7 +113,8 @@ def index():
                                                                    Job.status == queue.QUEUED, Job.run_at <= now))
     tokens, slow = buckets.level(s, f"rate:{workspace.id}:{mailer}", max(1.0, workspace.send_rate),
                                  workspace.send_rate, now)
-    return render("backstage.html", crew=crew(s, now), jobs=jobs, due_now=due_now, now=now,
+    rows = crew(s, now)
+    return render("backstage.html", crew=rows, on_duty=any(state == "on" for _row, state, _label in rows), jobs=jobs, due_now=due_now, now=now,
                   curtain=buckets.breaker(s, workspace.id, mailer), mailer=mailer,
                   mailer_label=mailers.LABELS[mailer], tokens=tokens, capacity=max(1.0, workspace.send_rate),
                   slow=slow, sent_today=buckets.sent_today(s, workspace.id, mailer, now),
@@ -275,13 +286,26 @@ def pause():
     return redirect(url_for("backstage.index"))
 
 
+@bp.post("/crew/start")
+def start_crew():
+    """Nobody on duty: start the worker inside this web app again (if its thread had stopped).
+    A worker in its own window can only be started from that window."""
+    from flask import current_app
+    if worker.in_app_running():
+        flash("A worker is already on duty in this web app.")
+    else:
+        worker.start_in_app(current_app._get_current_object())
+        flash("A worker is on duty again. Jobs left by a stopped worker come back when their lease runs out.")
+    return redirect(url_for("backstage.index"))
+
+
 @bp.post("/curtain")
 def raise_curtain():
     s = db.session()
     buckets.raise_curtain(s, g.workspace.id, mailers.for_workspace(g.workspace).name)
     s.commit()
     worker.nudge()
-    flash("The Safety Curtain is up. Sending starts again now.")
+    flash("Auto-pause is off: sending starts again now.")
     return redirect(request.form.get("back") or url_for("backstage.index"))
 
 

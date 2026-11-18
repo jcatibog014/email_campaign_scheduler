@@ -67,6 +67,9 @@
   --tape-ink: #f5efe6;
   /* Floorboards: long boards with seams between them, a joint now and then, and a faint grain. */
   --chart-bar: #b45309;  /* the one chart colour: dataviz-validated on --surface */
+  /* The delivery funnel: Sent, Delivered, Opened, Clicked, darkest to lightest (each 3:1 on the card). */
+  --funnel-1: #7c2d12; --funnel-2: #9a3412; --funnel-3: #c2410c; --funnel-4: #ea580c;
+  --board: #3b2b24;  /* the call board: plain, dark, so the paper cards stand out */
   --floorboards:
     linear-gradient(180deg, rgb(0 0 0 / .22), transparent 35%, transparent 75%, rgb(0 0 0 / .12)),
     repeating-linear-gradient(180deg, transparent 0 10px, rgb(0 0 0 / .3) 10px 11px),
@@ -103,7 +106,7 @@
     --gold: #c9971a; --bulb: #ffd166; --bulb-dim: #5a4220; --marquee-frame: #0d0806;
     --wood: #6e4527; --wood-deep: #4a2c16; --wood-light: #8a5a34; --spot: rgb(255 190 90 / .2);
     --cork: #8a6a46; --cork-dot: #6b4f30; --card-paper: #f6efe1; --card-rule: #b7c7de; --card-margin: #d98a86;
-    --tape: #0e0c0b; --tape-ink: #f1e9dc; --chart-bar: #cc7f1a;
+    --tape: #0e0c0b; --tape-ink: #f1e9dc; --chart-bar: #cc7f1a; --funnel-1: #c2410c; --funnel-2: #ea580c; --funnel-3: #f59e0b; --funnel-4: #fcd34d; --board: #1a1210;
     --cue-rehearsal-bg: #33292f; --cue-rehearsal-ink: #e2d7d0; --cue-rehearsal-lamp: #a39790;
     --cue-standby-bg: #45201a;   --cue-standby-ink: #ffc2b3;   --cue-standby-lamp: #ff5a3c;
     --cue-go-bg: #143523;        --cue-go-ink: #9ef0bd;        --cue-go-lamp: #34d870;
@@ -124,7 +127,7 @@
   --gold: #c9971a; --bulb: #ffd166; --bulb-dim: #5a4220; --marquee-frame: #0d0806;
   --wood: #6e4527; --wood-deep: #4a2c16; --wood-light: #8a5a34; --spot: rgb(255 190 90 / .2);
   --cork: #8a6a46; --cork-dot: #6b4f30; --card-paper: #f6efe1; --card-rule: #b7c7de; --card-margin: #d98a86;
-  --tape: #0e0c0b; --tape-ink: #f1e9dc; --chart-bar: #cc7f1a;
+  --tape: #0e0c0b; --tape-ink: #f1e9dc; --chart-bar: #cc7f1a; --funnel-1: #c2410c; --funnel-2: #ea580c; --funnel-3: #f59e0b; --funnel-4: #fcd34d; --board: #1a1210;
   --cue-rehearsal-bg: #33292f; --cue-rehearsal-ink: #e2d7d0; --cue-rehearsal-lamp: #a39790;
   --cue-standby-bg: #45201a;   --cue-standby-ink: #ffc2b3;   --cue-standby-lamp: #ff5a3c;
   --cue-go-bg: #143523;        --cue-go-ink: #9ef0bd;        --cue-go-lamp: #34d870;
@@ -245,15 +248,10 @@ html:not(.js) .js-only { display: none !important; }
 /* ---------- The call board and cue cards ---------- */
 
 .corkboard {
-  background-color: var(--cork);
-  background-image:
-    radial-gradient(circle at 30% 40%, var(--cork-dot) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 70% 70%, rgb(255 255 255 / .18) 0 .8px, transparent 1.4px),
-    radial-gradient(circle at 50% 20%, var(--cork-dot) 0 .9px, transparent 1.5px);
-  background-size: 9px 11px, 13px 7px, 17px 13px;
-  border: 14px solid var(--wood);
-  border-image: linear-gradient(135deg, var(--wood-light), var(--wood-deep)) 1;
-  box-shadow: inset 0 0 18px rgb(0 0 0 / .25), var(--shadow);
+  background: var(--board);
+  border: 6px solid var(--wood);
+  border-radius: 4px;
+  box-shadow: inset 0 0 24px rgb(0 0 0 / .35), var(--shadow);
   padding: 1.5rem;
 }
 .cue-card {
@@ -666,10 +664,10 @@ input[type="number"] { max-width: 12rem; }
 .board-bar .tabs { margin: 0; }
 .board-nav { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .board-range { font-family: var(--font-display); font-size: 1.1rem; min-width: 9rem; text-align: center; }
-.week-board { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1rem .8rem; align-items: start; min-height: 26rem; }
+.week-board { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1rem .8rem; align-items: start; min-height: 20rem; }
 .board-day { display: grid; gap: 1.2rem; align-content: start; min-width: 0; }
 .board-day-head { margin: 0 0 .2rem; font: inherit; text-align: center; }
-.board-nothing { text-align: center; color: rgb(60 35 15 / .55); font: 700 .78rem/1 var(--font-label); letter-spacing: .1em; text-transform: uppercase; padding-top: .4rem; }
+.board-nothing { text-align: center; color: rgb(255 240 220 / .45); font: 700 .78rem/1 var(--font-label); letter-spacing: .1em; text-transform: uppercase; padding-top: .4rem; }
 .board-card { padding-top: .9rem; }
 .board-card .cue-card-title { font-size: .92rem; overflow-wrap: anywhere; }
 .board-card .cue-card-time { margin-top: 0; display: flex; align-items: center; gap: .3rem; }
@@ -685,13 +683,17 @@ input[type="number"] { max-width: 12rem; }
   .board-day.is-empty { display: none; }
   .board-day.is-today.is-empty { display: grid; }
 }
-.month-board { display: grid; gap: .5rem; padding: 1rem; }
+.month-board { display: grid; gap: .5rem; }
 .month-head, .month-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .5rem; }
 .month-head { text-align: center; }
 .month-day { min-height: 6.5rem; background: rgb(255 253 247 / .9); border-radius: 2px; padding: .35rem .45rem; box-shadow: 0 1px 2px rgb(0 0 0 / .18); display: grid; align-content: start; gap: .2rem; color: #2b1d24; min-width: 0; }
 .month-day.is-other { opacity: .55; }
 .month-day.is-today { box-shadow: 0 0 0 3px var(--gold); }
 .month-date { font: 700 .8rem/1 var(--font-label); color: #6b5a5f; }
+.board-lane { margin-bottom: 1.4rem; }
+.board-lane-cards { display: grid; gap: 1.2rem 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); margin-top: .9rem; }
+.lane-head { display: flex; align-items: baseline; gap: .8rem; flex-wrap: wrap; }
+.lane-note { color: rgb(255 240 220 / .65); font-size: .85rem; }
 .month-pin { display: block; font-size: .76rem; line-height: 1.3; color: #2b1d24; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid var(--cue-standby-lamp); padding-left: .3rem; }
 .month-pin.is-done { border-left-color: var(--cue-done-lamp); color: #6b5a5f; }
 .month-pin:hover { text-decoration: underline; }
@@ -732,3 +734,40 @@ input[type="number"] { max-width: 12rem; }
 .error-text { color: var(--danger); overflow-wrap: anywhere; }
 .plain-text { white-space: pre-wrap; font-size: .82rem; background: var(--surface-soft); padding: .8rem; border-radius: var(--radius); max-height: 24rem; overflow: auto; }
 .banner-replay { background: var(--cue-go-bg); color: var(--cue-go-ink); border-color: color-mix(in srgb, var(--cue-go-lamp) 40%, transparent); }
+
+/* ---------- Design review (PR #3) ---------- */
+
+/* Funnel steps. */
+.funnel-step-1 { fill: var(--funnel-1); }
+.funnel-step-2 { fill: var(--funnel-2); }
+.funnel-step-3 { fill: var(--funnel-3); }
+.funnel-step-4 { fill: var(--funnel-4); }
+
+/* A small turning spinner (still for less motion). */
+.spinner { flex: 0 0 auto; width: 1.1rem; height: 1.1rem; margin-top: .15rem; border-radius: 50%;
+  border: 2.5px solid color-mix(in srgb, currentColor 25%, transparent); border-top-color: currentColor;
+  animation: spin .9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+.setup-note { margin-top: 1rem; font-size: .9rem; }
+.setup-note > summary { color: var(--muted); font-weight: 600; }
+.field-help { margin-top: -.6rem; color: var(--muted); font-size: .9rem; }
+.live-tag { display: inline-block; margin-left: .3rem; padding: .05rem .45rem; border-radius: 3px; background: var(--danger-soft); color: var(--danger); font: 700 .72rem/1.5 var(--font-label); letter-spacing: .06em; text-transform: uppercase; }
+.crew-state { display: inline-flex; align-items: center; gap: .4rem; }
+
+/* The curtain menu: a thin scrollbar when the screen is short. */
+.sidebar-inner { scrollbar-width: thin; scrollbar-color: rgb(255 230 200 / .35) transparent; }
+.sidebar-inner::-webkit-scrollbar { width: 6px; }
+.sidebar-inner::-webkit-scrollbar-thumb { background: rgb(255 230 200 / .35); border-radius: 3px; }
+
+/* Tables: every other row a little darker, so the eye can follow a row across. */
+tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-soft) 55%, transparent); }
+tbody tr:nth-child(even):hover { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
+
+/* The show page's one scheduling form: only the chosen option's boxes show (with JavaScript). */
+.schedule-box { flex: 1 1 100%; display: grid; gap: .9rem; padding: .9rem 1rem; border: 1px dashed var(--rule); border-radius: var(--radius); }
+.schedule-choices { display: grid; gap: .45rem; }
+.schedule-fields { display: grid; gap: .6rem; }
+.schedule-fields > legend { font-weight: 600; margin-bottom: .3rem; }
+.js [data-schedule] .schedule-fields[hidden] { display: none; }

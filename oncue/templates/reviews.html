@@ -31,7 +31,7 @@
               <span class="funnel-label">{{ row.label }}</span>
               <svg class="funnel-bar" viewBox="0 0 100 12" preserveAspectRatio="none" aria-hidden="true">
                 <rect class="chart-track" x="0" y="0" width="100" height="12" rx="2"></rect>
-                {% if row.width %}<rect class="chart-bar" x="0" y="0" width="{{ row.width }}" height="12" rx="2"><title>{{ row.label }}: {{ row.value|number }} ({{ '%.1f'|format(row.share) }}%)</title></rect>{% endif %}
+                {% if row.width %}<rect class="funnel-step-{{ loop.index }}" x="0" y="0" width="{{ row.width }}" height="12" rx="2"><title>{{ row.label }}: {{ row.value|number }} ({{ '%.1f'|format(row.share) }}%)</title></rect>{% endif %}
               </svg>
               <span class="funnel-value">{{ row.value|number }} <span class="muted">{{ '%.0f'|format(row.share) }}%</span></span>
             </div>
@@ -58,7 +58,7 @@
           {% if opens.empty %}<text class="chart-empty" x="{{ (opens.left + opens.right) / 2 }}" y="{{ opens.base / 2 }}" text-anchor="middle">No opens yet: news comes in over the next hour or so.</text>{% endif %}
         </svg>
         <details class="fold top-gap">
-          <summary>Show as a table</summary>
+          <summary>View data table</summary>
           <div class="table-wrap"><table><thead><tr><th>{{ 'Week of' if weekly else 'Day' }}</th><th class="num">First opens</th></tr></thead>
             <tbody>{% for label, value, _title in opens_points if value %}<tr><td>{{ label }}</td><td class="num">{{ value|number }}</td></tr>{% else %}<tr><td colspan="2" class="muted">No opens yet.</td></tr>{% endfor %}</tbody></table></div>
         </details>

@@ -24,7 +24,7 @@ from sqlalchemy import delete, func, select
 
 from . import auth, queue
 from .dates import utcnow
-from .models import Job, User, Workspace
+from .models import Job, User, Worker, Workspace
 
 DEMO_LIFETIME = timedelta(hours=24)
 MAX_DEMOS = 100
@@ -331,6 +331,8 @@ def replay_history(s, job, now):
 
     worker.simulate(s, moment - timedelta(days=HISTORY_DAYS), utcnow(), worker_id=f"replay-{workspace_id}",
                     workspace_id=workspace_id, on_round=keep_lease)
+    # The replay's pretend worker leaves no row behind: The Crew lists real workers.
+    s.execute(delete(Worker).where(Worker.id == f"replay-{workspace_id}"))
     workspace = s.get(Workspace, workspace_id)
     stage_unsure_example(s, workspace, moment)
     workspace.replaying = False  # the live crew takes over from here

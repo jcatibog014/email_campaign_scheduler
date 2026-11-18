@@ -241,16 +241,10 @@ def test_the_call_board(app, owner):
         show = s.get(Show, weekly)
         smart.schedule_weekly(s, show, workspace, [0, 1, 2, 3, 4, 5, 6], time(10, 0), datetime.now())
         s.commit()
-    # Every coming 10:00 AM left in this week (Manila time), not only the next one. Worked out
-    # from today, because how many are left depends on the day the test runs.
-    next_monday = smart.week_start(to_zone(utcnow(), "Asia/Manila").date()) + timedelta(days=7)
-    left, moment = 0, utcnow()
-    while (moment := smart.next_occurrence(list(range(7)), time(10, 0), "Asia/Manila", moment)) and \
-            to_zone(moment, "Asia/Manila").date() < next_monday:
-        left += 1
+    # A weekly show is one card in the Every Week lane, not a card on every day.
     page = text(client.get("/call-board/"))
-    assert page.count("Weekly Notes") == left  # one cue card per coming day
-    assert "corkboard week-board" in page
+    assert page.count("Weekly Notes") == 1 and "Every day at 10:00 AM" in page and "Every Week" in page
+    assert 'class="week-board"' in page
     month = text(client.get("/call-board/?view=month"))
-    assert "Weekly Notes" in month and "month-board" in month
+    assert month.count("Weekly Notes") == 1 and "month-board" in month
     assert client.get("/call-board/?week=-1").status_code == 200

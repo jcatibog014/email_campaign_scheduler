@@ -1,7 +1,7 @@
 {# On the Stage: when sending is paused or the Safety Curtain is down. #}
 {% from "_macros.html" import csrf %}
 {% if g.workspace.replaying %}
-  <div class="banner banner-replay" role="status" data-replay-url="{{ url_for('stage.replay_status') }}"><div><strong>The crew is replaying Teatro Luna's last six weeks</strong> Past shows go out again through the real queue, retries and all, on a fast clock. Curtain Calls and Reviews fill in within a minute; this page reloads by itself.</div></div>
+  <div class="banner banner-replay" role="status" data-replay-url="{{ url_for('stage.replay_status') }}"><span class="spinner" aria-hidden="true"></span><div><strong>Replaying Teatro Luna's last six weeks</strong> Past shows go out again through the real crew, retries and all, on a fast clock. Curtain Calls and Reviews fill in within a minute.</div></div>
 {% endif %}
 {% if g.workspace.sending_paused %}
   <div class="banner banner-hold" role="status"><div><strong>Sending is paused</strong> Emails wait in the wings until you resume it in Backstage.</div>
@@ -9,5 +9,5 @@
 {% endif %}
 {% if curtain_down %}
   <div class="banner" role="alert"><div><strong>The Safety Curtain is down</strong> {{ CUE_WORDS.safety_curtain.note }}{% if curtain.retry_at and curtain.state == 'open' %} Next test: {{ curtain.retry_at|clock }}.{% endif %}</div>
-    <form method="post" action="{{ url_for('backstage.raise_curtain') }}">{{ csrf() }}<input type="hidden" name="back" value="{{ url_for('stage.home') }}"><button class="button button-small" type="submit">Raise the curtain</button></form></div>
+    <form method="post" action="{{ url_for('backstage.raise_curtain') }}">{{ csrf() }}<input type="hidden" name="back" value="{{ url_for('stage.home') }}"><button class="button button-small" type="submit">Resume sending now</button></form></div>
 {% endif %}

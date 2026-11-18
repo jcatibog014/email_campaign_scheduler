@@ -9,7 +9,8 @@
   <div class="editor">
     <form method="post" class="card stack" id="email-form">
       {{ csrf() }}
-      {{ field('name', 'Script name', values.name, errors.name, hint='Only you see it', attrs='required maxlength="80"') }}
+      {{ field('name', 'Script name', values.name, errors.name, attrs='required maxlength="80" aria-describedby="name-help"') }}
+      <p class="field-help" id="name-help">Only you see this name. Your audience sees the subject.</p>
       {% include "_email_fields.html" %}
       <div class="form-actions">
         <button class="button" type="submit">Save script</button>
