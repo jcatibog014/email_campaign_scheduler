@@ -20,23 +20,16 @@
           <input type="hidden" name="next" value="{{ next }}">
           {{ field('email', 'Email', email, type='email', attrs='autocomplete="email" required autofocus') }}
           {{ field('password', 'Password', type='password', attrs='autocomplete="current-password" required') }}
-          <div class="form-actions"><button class="button" type="submit">Log in</button></div>
+          <button class="button button-block" type="submit">Log in</button>
         </form>
-        {# Only before the owner's login exists: a note for whoever is setting up the site. #}
-        {% if not has_owner %}
-          <details class="fold setup-note">
-            <summary>Setting up this site?</summary>
-            <p class="muted small">Make the owner's login from your PC with <code>flask --app oncue create-owner</code> (docs/DEPLOY.md, part 3).</p>
-          </details>
-        {% endif %}
       </div>
       <p class="or-line">or</p>
       <div class="card demo-card">
-        <h2>Just Looking?</h2>
-        <p>Your own sample theatre company. Every email goes to a practice mail server. Deleted after 24 hours.</p>
+        <h2>Explore the Demo</h2>
+        <p>Your own sample theatre company, deleted after 24 hours.</p>
         <form method="post" action="{{ url_for('demo.start') }}">
           {{ csrf() }}
-          <button class="button button-quiet" type="submit">Try demo</button>
+          <button class="button button-quiet button-block" type="submit">Try the demo</button>
         </form>
       </div>
     </section>

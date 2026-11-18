@@ -5,9 +5,10 @@ from oncue.models import User, Workspace
 from .conftest import PASSWORD, browser, get_user, is_logged_in, make_owner, post, text
 
 
-def test_the_login_page_says_how_to_make_the_owner(client):
+def test_the_login_page_has_only_the_login_and_the_demo(client):
     page = text(client.get("/login"))
-    assert "create-owner" in page and "Try demo" in page
+    assert "Log in" in page and "Try the demo" in page
+    assert "create-owner" not in page and "Setting up this site" not in page
 
 
 def test_owner_logs_in_and_out(app, client):
@@ -15,7 +16,6 @@ def test_owner_logs_in_and_out(app, client):
     response = post(client, "/login", {"email": "Maria@Example.com ", "password": PASSWORD})
     assert response.status_code == 302 and response.headers["Location"].endswith("/stage")
     assert is_logged_in(client)
-    assert "create-owner" not in text(browser(app).get("/login"))
     post(client, "/logout")
     assert not is_logged_in(client)
 

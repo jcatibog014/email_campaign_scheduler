@@ -39,7 +39,7 @@ def shot(page, name, full=True):
 
 def start_demo(page):
     page.goto(BASE + "/login")
-    page.click("text=Try demo")
+    page.click("text=Try the demo")
     for _ in range(120):  # the replay of its past: about 10 seconds locally
         if not page.request.get(BASE + "/stage/replay.json").json()["replaying"]:
             return

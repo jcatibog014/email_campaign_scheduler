@@ -8,7 +8,7 @@ The app looks and talks like a **theatre backstage**: velvet curtains, a stage f
 
 I made it to practise **background jobs, retries, scheduling and rate limits**.
 
-Try it: on the login page, press **Try demo**. You get your own sample theatre company, "Teatro Luna", for 24 hours. Everything in the demo goes to a pretend mail server, never to a real inbox. Its past six weeks are played back through the real crew when it starts, so every page has examples.
+Try it: on the login page, press **Try the demo**. You get your own sample theatre company, "Teatro Luna", for 24 hours. Everything in the demo goes to a pretend mail server, never to a real inbox. Its past six weeks are played back through the real crew when it starts, so every page has examples.
 
 ![The login page: the curtain opens on a lit stage](docs/screenshots/login.png)
 
