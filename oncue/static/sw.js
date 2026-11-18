@@ -4,13 +4,13 @@
 // without a connection a small "You're offline" page shows instead.
 "use strict";
 
-const CACHE = "oncue-v2"; // change the number when these files change
+const CACHE = "oncue-v3"; // change the number when these files change
 const FILES = [
   "/static/style.css",
   "/static/app.js",
   "/static/theme.js",
-  "/static/fonts/inter-latin-400-normal.woff2",
-  "/static/fonts/playfair-display-700.woff2",
+  "/static/fonts/nunito-latin-400-normal.woff2",
+  "/static/fonts/fredoka-latin-700-normal.woff2",
   "/static/icons/icon-192.png",
   "/static/offline.html",
 ];
