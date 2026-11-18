@@ -235,8 +235,7 @@ def login():
             log_in(user)
             return redirect(safe_next(next_page))
     status = 401 if error else 200
-    return render_template("login.html", error=error, email=email, next=next_page,
-                           has_owner=owner(db.session()) is not None), status
+    return render_template("login.html", error=error, email=email, next=next_page), status
 
 
 @bp.post("/logout")

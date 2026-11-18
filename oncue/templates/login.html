@@ -20,15 +20,8 @@
           <input type="hidden" name="next" value="{{ next }}">
           {{ field('email', 'Email', email, type='email', attrs='autocomplete="email" required autofocus') }}
           {{ field('password', 'Password', type='password', attrs='autocomplete="current-password" required') }}
-          <div class="form-actions"><button class="button" type="submit">Log in</button></div>
+          <div class="form-actions center"><button class="button" type="submit">Log in</button></div>
         </form>
-        {# Only before the owner's login exists: a note for whoever is setting up the site. #}
-        {% if not has_owner %}
-          <details class="fold setup-note">
-            <summary>Setting up this site?</summary>
-            <p class="muted small">Make the owner's login from your PC with <code>flask --app oncue create-owner</code> (docs/DEPLOY.md, part 3).</p>
-          </details>
-        {% endif %}
       </div>
       <p class="or-line">or</p>
       <div class="demo-card">

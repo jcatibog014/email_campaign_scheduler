@@ -408,6 +408,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px
 .form-row > .field { flex: 1 1 14rem; }
 .form-actions { display: flex; flex-wrap: wrap; gap: .6rem; justify-content: flex-end; align-items: center; }
 .form-actions.start { justify-content: flex-start; }
+.form-actions.center { justify-content: center; }
 .check { display: inline-flex; align-items: flex-start; gap: .55rem; cursor: pointer; }
 .check input { width: 1.1rem; height: 1.1rem; margin: .2rem 0 0; accent-color: var(--accent); flex: 0 0 auto; }
 .choices { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; border: 0; padding: 0; }
@@ -749,8 +750,6 @@ input[type="number"] { max-width: 12rem; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 
-.setup-note { margin-top: 1rem; font-size: .9rem; }
-.setup-note > summary { color: var(--muted); font-weight: 600; }
 .field-help { margin-top: -.6rem; color: var(--muted); font-size: .9rem; }
 .live-tag { display: inline-block; margin-left: .3rem; padding: .05rem .45rem; border-radius: 3px; background: var(--danger-soft); color: var(--danger); font: 700 .72rem/1.5 var(--font-label); letter-spacing: .06em; text-transform: uppercase; }
 .crew-state { display: inline-flex; align-items: center; gap: .4rem; }
