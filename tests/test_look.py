@@ -58,6 +58,15 @@ def test_the_scripts_have_no_syntax_errors():
         assert result.returncode == 0, f"{script}: {result.stderr}"
 
 
+def test_are_you_sure_is_asked_in_the_apps_own_look():
+    """The browser's confirm box can't be styled: app.js shows its own dialog, and uses
+    confirm() only on browsers without <dialog>."""
+    script = (Path(__file__).parent.parent / "oncue" / "static" / "app.js").read_text(encoding="utf-8")
+    assert "showModal()" in script and script.count("confirm(") == 1
+    assert ".confirm-dialog {" in CSS and ".confirm-dialog::backdrop" in CSS
+    assert "style=" not in script  # the strict CSP blocks inline styles
+
+
 def test_no_inline_styles_or_scripts():
     templates = Path(__file__).parent.parent / "oncue" / "templates"
     for path in templates.glob("*.html"):

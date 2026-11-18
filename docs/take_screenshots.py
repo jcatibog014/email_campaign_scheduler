@@ -72,6 +72,11 @@ def main():
         page.goto(BASE + "/shows/?tab=rehearsal")
         page.click("text=Closing Night Reminder")
         shot(page, "show-schedule.png")
+        page.get_by_role("button", name="Start now").click()  # asks first, in the app's own dialog
+        page.locator("dialog.confirm-dialog").wait_for(state="visible")
+        page.wait_for_timeout(300)
+        shot(page, "confirm.png", full=False)
+        page.keyboard.press("Escape")
         page.goto(BASE + "/shows/new")
         page.fill("input[name=name]", "Season Two Announcement")
         page.fill("input[name=subject]", "Season two is here, {{first_name|friend}}")
