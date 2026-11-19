@@ -1,4 +1,5 @@
 """Smart sending: their own time zone, quiet hours, the A/B test, weekly shows, the Call Board."""
+import re
 from datetime import date, datetime, time, timedelta
 
 import pytest
@@ -248,3 +249,26 @@ def test_the_call_board(app, owner):
     month = text(client.get("/call-board/?view=month"))
     assert month.count("Weekly Notes") == 1 and "month-board" in month
     assert client.get("/call-board/?week=-1").status_code == 200
+
+
+def test_weeks_run_sunday_to_saturday(app, owner):
+    """Like a wall calendar: Sun Mon Tue Wed Thu Fri Sat, on the board and on the show page."""
+    for day in (date(2026, 11, 15), date(2026, 11, 18), date(2026, 11, 21)):  # Sunday, Wednesday, Saturday
+        assert smart.week_start(day) == date(2026, 11, 15)
+    assert smart.week_start(date(2026, 11, 22)) == date(2026, 11, 22)  # the next Sunday starts a new week
+    client, workspace_id = owner
+    page = text(client.get("/call-board/"))
+    heads = re.findall(r'class="board-day-head"><span class="tape[^"]*">(\w{3}) ', page)
+    assert heads == ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    month = text(client.get("/call-board/?view=month"))
+    assert re.findall(r'<span class="tape">(\w{3})</span>', month.split('class="month-head"')[1])[:7] == \
+        ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    weekly = make_show(app, workspace_id)
+    with app.app_context():
+        s = db.session()
+        show = s.get(Show, weekly)
+        smart.schedule_weekly(s, show, s.get(Workspace, workspace_id), [0, 6], time(9, 0), datetime.now())
+        s.commit()
+        assert smart.describe_repeat(show) == "Every Sunday, Monday at 9:00 AM"
+    boxes = re.findall(r'name="repeat_days" value="(\d)"', text(client.get(f"/shows/{weekly}")))
+    assert boxes == ["6", "0", "1", "2", "3", "4", "5"]  # Sun first; the stored numbers don't change

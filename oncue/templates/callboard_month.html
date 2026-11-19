@@ -13,7 +13,7 @@
   <div class="corkboard">
   {% include "_board_lane.html" %}
   <div class="month-board">
-    <div class="month-head" aria-hidden="true">{% for name in ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun') %}<span class="tape">{{ name }}</span>{% endfor %}</div>
+    <div class="month-head" aria-hidden="true">{% for name in ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat') %}<span class="tape">{{ name }}</span>{% endfor %}</div>
     {% for week in weeks %}
       <div class="month-week">
         {% for day in week %}
@@ -24,7 +24,7 @@
               <a class="month-pin{% if card.status == 'curtain_down' %} is-done{% endif %}" href="{{ url_for('shows.page', show_id=card.show.id) }}" title="{{ show_cue(card.status).label }}: {{ card.show.name }}">
                 <span class="pin-time">{{ card.at|clock }}</span> {{ card.show.name }}</a>
             {% endfor %}
-            {% if cards|length > 3 %}<a class="month-more" href="{{ url_for('callboard.board', week=(day - this_monday).days // 7) }}">+{{ cards|length - 3 }} more</a>{% endif %}
+            {% if cards|length > 3 %}<a class="month-more" href="{{ url_for('callboard.board', week=(day - this_week).days // 7) }}">+{{ cards|length - 3 }} more</a>{% endif %}
           </div>
         {% endfor %}
       </div>
