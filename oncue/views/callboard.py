@@ -1,6 +1,6 @@
 """The Call Board: what's on, pinned to a cork board as cue cards, by day.
 
-Week view (the default): seven columns, Monday to Sunday, in the workspace's
+Week view (the default): seven columns, Sunday to Saturday, in the workspace's
 time zone. Month view: the month's weeks, a few titles a day. Each card is a
 show at a time: shows on Standby, EVERY coming time of a weekly show (not
 just the next one), what is on Go now, and what finished.
@@ -91,16 +91,16 @@ def board():
         next_month = date(year + month // 12, month % 12 + 1, 1)
         weeks = []
         day = grid_start
-        while day < next_month or day.weekday() != 0:
-            if day.weekday() == 0:
+        while day < next_month or day != smart.week_start(day):
+            if day == smart.week_start(day):  # a Sunday starts a new row
                 weeks.append([])
             weeks[-1].append(day)
             day += timedelta(days=1)
         by_day = cards_between(s, g.workspace, grid_start, weeks[-1][-1])
         return render_template("callboard_month.html", weeks=weeks, by_day=by_day, first=first, today=today,
-                               offset=offset, this_monday=smart.week_start(today), weekly=weekly_shows(s, g.workspace))
+                               offset=offset, this_week=smart.week_start(today), weekly=weekly_shows(s, g.workspace))
     offset = request.args.get("week", 0, type=int)
-    monday = smart.week_start(today) + timedelta(weeks=offset)
-    days = [monday + timedelta(days=index) for index in range(7)]
+    sunday = smart.week_start(today) + timedelta(weeks=offset)
+    days = [sunday + timedelta(days=index) for index in range(7)]
     return render_template("callboard.html", days=days, by_day=cards_between(s, g.workspace, days[0], days[-1]),
                            today=today, offset=offset, weekly=weekly_shows(s, g.workspace))

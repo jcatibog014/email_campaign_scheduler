@@ -360,7 +360,7 @@ def progress(s, show):
         latest = found[0] if found else None
         ab = {"perf": latest, "numbers": smart.ab_numbers(s, latest.id) if latest else None}
     return {"progress_template": "_show_progress.html", "performances": rows, "performance_count": len(found),
-            "estimate": estimate, "tests": tests, "ab": ab, "weekdays": smart.WEEKDAYS,
+            "estimate": estimate, "tests": tests, "ab": ab, "weekdays": [(day, smart.WEEKDAYS[day]) for day in smart.WEEK_ORDER],
             "repeat_label": smart.describe_repeat(show) if show.repeats else None,
             "repeat_days": smart.days_of(show),
             "show_sections": (["_show_ab.html"] if show.is_ab else []) + (["_show_results.html"] if found else [])

@@ -76,7 +76,7 @@
                   <legend class="no-js-only">Every week</legend>
                   <fieldset class="choices day-choices">
                     <legend>On</legend>
-                    {% for day in weekdays %}<label class="check"><input type="checkbox" name="repeat_days" value="{{ loop.index0 }}"{% if loop.index0 in repeat_days %} checked{% endif %}> {{ day[:3] }}</label>{% endfor %}
+                    {% for number, day in weekdays %}<label class="check"><input type="checkbox" name="repeat_days" value="{{ number }}"{% if number in repeat_days %} checked{% endif %}> {{ day[:3] }}</label>{% endfor %}
                   </fieldset>
                   <label class="field"><span class="field-label">At <span class="hint">{{ g.workspace.time_zone.replace('_', ' ') }} time</span></span>
                     <input type="time" name="repeat_time" value="{{ show.repeat_time or '09:00' }}"></label>

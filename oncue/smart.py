@@ -36,6 +36,9 @@ from .models import Contact, Message, Performance, Show, Workspace
 EARLIEST_ZONE = "Etc/GMT-14"  # UTC+14 (the sign is backwards in these names): where each day starts first
 LATEST_ZONE = "Etc/GMT+12"  # UTC-12: where each day ends last
 WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+# Python's day numbers (0 = Monday, as stored in repeat_days) in the order people see them:
+# Sunday first, Saturday last.
+WEEK_ORDER = [6, 0, 1, 2, 3, 4, 5]
 AB_PERCENTS = (10, 20, 30, 50)
 AB_WAITS = (1, 2, 4, 8, 24)
 
@@ -140,7 +143,7 @@ def describe_repeat(show):
     elif days == [0, 1, 2, 3, 4]:
         names = "weekday"
     else:
-        names = ", ".join(WEEKDAYS[day] for day in days)
+        names = ", ".join(WEEKDAYS[day] for day in sorted(days, key=WEEK_ORDER.index))
     clock = parse_clock(show.repeat_time)
     return f"Every {names} at {clock.hour % 12 or 12}:{clock.minute:02d} {'AM' if clock.hour < 12 else 'PM'}"
 
@@ -251,7 +254,8 @@ def save_quiet(s, workspace, form):
 
 
 def week_start(day):
-    return day - timedelta(days=day.weekday())
+    """The Sunday that starts day's week (weeks run Sunday to Saturday, as on a wall calendar)."""
+    return day - timedelta(days=(day.weekday() + 1) % 7)
 
 
 def init_app(app):
