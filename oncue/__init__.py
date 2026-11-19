@@ -65,6 +65,9 @@ def create_app(test_config=None):
         # Cookie safety: not readable by JavaScript (Flask's default), not sent
         # with forms from other sites, and only over HTTPS on the live site.
         SESSION_COOKIE_SAMESITE="Lax",
+        # Its own name, not Flask's "session": browsers share cookies between every port of
+        # 127.0.0.1, so another Flask app open on this PC would replace it and log you out.
+        SESSION_COOKIE_NAME="oncue_session",
         SESSION_COOKIE_SECURE=on_render,
         PERMANENT_SESSION_LIFETIME=timedelta(days=30),
         MAX_CONTENT_LENGTH=5 * 1000 * 1000,  # the biggest CSV import

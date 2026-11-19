@@ -11,6 +11,16 @@ def test_the_login_page_has_only_the_login_and_the_demo(client):
     assert "create-owner" not in page and "Setting up this site" not in page
 
 
+def test_the_login_cookie_has_its_own_name(app, client):
+    """Not Flask's "session": another Flask app on this PC (any port of 127.0.0.1) would
+    write over it, and the next click would land on the login page."""
+    make_owner(app)
+    response = post(client, "/login", {"email": "maria@example.com", "password": PASSWORD})
+    cookies = response.headers.getlist("Set-Cookie")
+    assert any(cookie.startswith("oncue_session=") for cookie in cookies)
+    assert not any(cookie.startswith("session=") for cookie in cookies)
+
+
 def test_owner_logs_in_and_out(app, client):
     make_owner(app)
     response = post(client, "/login", {"email": "Maria@Example.com ", "password": PASSWORD})
