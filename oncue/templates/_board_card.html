@@ -1,6 +1,7 @@
-{# One cue card on the Call Board. #}
+{# One cue card on the Call Board. A past run of a weekly show opens that run, not the show's next time. #}
 {% from "_icons.html" import icon %}
-<a class="cue-card board-card{% if card.status == 'curtain_down' %} is-done{% endif %}{% if card.status in ('go', 'hold') %} is-live{% endif %}" href="{{ url_for('shows.page', show_id=card.show.id) }}">
+<a class="cue-card board-card{% if card.status == 'curtain_down' %} is-done{% endif %}{% if card.status in ('go', 'hold') %} is-live{% endif %}" href="{{ url_for('shows.page', show_id=card.show.id, run=card.run) }}">
+  <span class="cue-card-date">{{ card.at|short_date }}</span>
   <span class="cue-card-time">{{ card.at|clock }}{% if card.repeat %} {{ icon('repeat', 13) }}<span class="visually-hidden"> (weekly)</span>{% endif %}</span>
   <strong class="cue-card-title">{{ card.show.name }}</strong>
   <span class="cue-card-meta">{{ card.label }}</span>

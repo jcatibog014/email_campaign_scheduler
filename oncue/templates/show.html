@@ -18,7 +18,7 @@
     <div class="stack">
       {# While the show is on Go, or due on Standby within 10 minutes, app.js watches progress.json
          and moves the meter; when the cue changes, the page reloads. #}
-      {% set watch = show.status == 'go' or (show.status == 'standby' and show.send_at <= now + soon) %}
+      {% set watch = (show.status == 'go' or (show.status == 'standby' and show.send_at <= now + soon)) and not past_run %}
       <section class="card show-cue{% if show.status in ('go', 'hold') %} marquee{% if show.status == 'go' %} is-live{% endif %}{% endif %}"
         {% if watch %} data-live-url="{{ url_for('shows.progress_json', show_id=show.id) }}" data-live-status="{{ show.status }}"{% endif %}>
         <div class="card-head"><h2>Cue</h2>{{ show_status(show.status) }}</div>

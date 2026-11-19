@@ -347,7 +347,13 @@ def progress(s, show):
     """The show page's progress panel: each performance (newest first) with its meter,
     an estimate of when it finishes while it is sending, and the tests sent."""
     found = performances_of(s, show)
-    rows = [(perf, sending.meter(sending.counts(s, show.id, perf.id))) for perf in found[:5]]
+    # ?run=3: one performance of a weekly show, opened from its Call Board card. Its meter is the
+    # one shown, and it is marked in the list (added to it if it is older than the newest five).
+    wanted = request.args.get("run", type=int)
+    chosen = next((perf for perf in found if perf.number == wanted), None)
+    listed = found[:5] + ([chosen] if chosen is not None and chosen not in found[:5] else [])
+    rows = [(perf, sending.meter(sending.counts(s, show.id, perf.id))) for perf in listed]
+    main_meter = next((meter for perf, meter in rows if perf is chosen), rows[0][1] if rows else None)
     estimate = None
     if rows and show.status == shows.GO:
         waiting = rows[0][1]["waiting"] + rows[0][1]["retrying"]
@@ -360,6 +366,9 @@ def progress(s, show):
         latest = found[0] if found else None
         ab = {"perf": latest, "numbers": smart.ab_numbers(s, latest.id) if latest else None}
     return {"progress_template": "_show_progress.html", "performances": rows, "performance_count": len(found),
+            "main_meter": main_meter, "chosen_run": chosen,
+            # An older run is on show: the live meter (which follows the newest run) stays still.
+            "past_run": chosen is not None and chosen is not found[0],
             "estimate": estimate, "tests": tests, "ab": ab, "weekdays": [(day, smart.WEEKDAYS[day]) for day in smart.WEEK_ORDER],
             "repeat_label": smart.describe_repeat(show) if show.repeats else None,
             "repeat_days": smart.days_of(show),

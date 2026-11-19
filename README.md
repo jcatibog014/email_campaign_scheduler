@@ -49,11 +49,15 @@ Before something big (Start now, Delete, Resend), the app asks first, in its own
 
 ### The Call Board
 
-The schedule as cue cards pinned on a cork board, by week or by month. A weekly show has a card on every day it goes.
+The schedule as cue cards pinned on a cork board, by week or by month, Sunday to Saturday. Each card shows its date and time. A weekly show has one card in the **Every Week** lane, and a card on each day it has already gone out.
 
 ![The Call Board, week](docs/screenshots/call-board.png)
 
 ![The Call Board, month](docs/screenshots/call-board-month.png)
+
+A weekly show sends many times; each time is a **performance**. Its card for a past day opens that performance: the page says which one and when it went out, shows its numbers, and marks it in the list. The time at the top of the page is still the show's **next** time.
+
+![One performance of a weekly show, opened from its card](docs/screenshots/show-run.png)
 
 ### Audience
 

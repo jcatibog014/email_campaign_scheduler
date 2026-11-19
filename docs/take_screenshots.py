@@ -89,6 +89,9 @@ def main():
         shot(page, "show-builder.png")
         page.goto(BASE + "/call-board/")
         shot(page, "call-board.png")
+        page.locator('a.board-card[href*="run="]').first.click()  # a past run of the weekly show
+        page.wait_for_load_state("networkidle")
+        shot(page, "show-run.png", full=False)
         page.goto(BASE + "/call-board/?view=month")
         shot(page, "call-board-month.png")
         page.goto(BASE + "/audience/")

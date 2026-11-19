@@ -26,6 +26,7 @@ class Card:
     status: str
     label: str
     repeat: bool = False
+    run: int | None = None  # a weekly show's performance number: its card opens that run
 
 
 @bp.before_request
@@ -70,7 +71,8 @@ def cards_between(s, workspace, first_day, last_day):
                          .where(Performance.workspace_id == workspace.id, Performance.status == "done",
                                 Performance.starts_at >= start, Performance.starts_at < end)).all()
     for perf, show in finished:
-        found.append(Card(show, perf.starts_at, shows.CURTAIN_DOWN, label(show), show.repeats))
+        found.append(Card(show, perf.starts_at, shows.CURTAIN_DOWN, label(show), show.repeats,
+                          perf.number if show.repeats else None))
     by_day = {}
     for card in sorted(found, key=lambda card: card.at):
         by_day.setdefault(to_zone(card.at, zone_name).date(), []).append(card)

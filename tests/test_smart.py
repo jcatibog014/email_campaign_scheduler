@@ -251,6 +251,34 @@ def test_the_call_board(app, owner):
     assert client.get("/call-board/?week=-1").status_code == 200
 
 
+def test_a_weekly_card_opens_its_own_performance(app, owner):
+    """A weekly show's past runs are separate cards. Each opens that run (its date, its meter,
+    marked in the list), not the show's next time, which is a different day."""
+    client, workspace_id = owner
+    weekly = make_show(app, workspace_id)
+    with app.app_context():
+        s = db.session()
+        show = s.get(Show, weekly)
+        smart.schedule_weekly(s, show, s.get(Workspace, workspace_id), [0, 1, 2, 3, 4, 5, 6], time(10, 0), utcnow())
+        today = smart.week_start(to_zone(utcnow(), "Asia/Manila").date())
+        for number, days in ((1, 0), (2, 1)):  # Sunday and Monday of this week, 10:00 AM Manila
+            moment = from_zone(datetime.combine(today + timedelta(days=days), time(10, 0)), "Asia/Manila")
+            s.add(Performance(workspace_id=workspace_id, show_id=weekly, number=number, status="done",
+                              starts_at=moment, finished_at=moment, fanned_out=True))
+        s.commit()
+    board = text(client.get("/call-board/"))
+    links = re.findall(rf'href="/shows/{weekly}\?run=(\d)"', board)
+    assert sorted(links) == ["1", "2"]
+    sunday = f"{today:%a}, {today:%b} {today.day}"
+    assert sunday in board  # each card says its date
+    page = text(client.get(f"/shows/{weekly}?run=1"))
+    assert f"Showing performance 1 of 2, which went out <strong>{sunday}, 10:00 AM" in page
+    assert re.search(r'<li class="is-chosen" aria-current="true"><h3><a href="[^"]*run=1">Performance 1', page)
+    assert "All 2 performances together." in page
+    newest = text(client.get(f"/shows/{weekly}"))
+    assert "Showing performance" not in newest and "is-chosen" not in newest
+
+
 def test_weeks_run_sunday_to_saturday(app, owner):
     """Like a wall calendar: Sun Mon Tue Wed Thu Fri Sat, on the board and on the show page."""
     for day in (date(2026, 11, 15), date(2026, 11, 18), date(2026, 11, 21)):  # Sunday, Wednesday, Saturday

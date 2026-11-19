@@ -1,16 +1,18 @@
-{# A show's progress: its newest performances, each with a meter. show.html makes it live. #}
+{# A show's progress: the meter of its newest performance (or of the one opened from the Call Board,
+   ?run=), and its newest performances. show.html makes it live. #}
+{% from "_icons.html" import icon %}
 {% if performances %}
   <div class="show-progress">
-    {% for perf, meter in performances %}
-      {% if loop.first %}
-        {% include "_meter.html" %}
-      {% endif %}
-    {% endfor %}
-    {% if estimate %}<p class="muted small top-gap">At {{ g.workspace.send_rate|round(1) }} a second and {{ g.workspace.daily_cap|number }} a day, the rest should be out by <strong>{{ estimate|nice_datetime }}</strong>.</p>{% endif %}
+    {% if chosen_run and performance_count > 1 %}
+      <p class="run-note">{{ icon('repeat', 16) }} <span>Showing performance {{ chosen_run.number }} of {{ performance_count }}, which went out <strong>{{ chosen_run.starts_at|nice_datetime }}</strong>.
+        <a href="{{ url_for('shows.page', show_id=show.id) }}">Show the newest</a></span></p>
+    {% endif %}
+    {% with meter=main_meter %}{% include "_meter.html" %}{% endwith %}
+    {% if estimate and not past_run %}<p class="muted small top-gap">At {{ g.workspace.send_rate|round(1) }} a second and {{ g.workspace.daily_cap|number }} a day, the rest should be out by <strong>{{ estimate|nice_datetime }}</strong>.</p>{% endif %}
     {% if performance_count > 1 %}
       <ul class="perf-list">
         {% for perf, meter in performances %}
-          <li><h3>Performance {{ perf.number }} <span class="muted small">{{ perf.starts_at|nice_datetime }}</span></h3>
+          <li{% if perf is sameas chosen_run %} class="is-chosen" aria-current="true"{% endif %}><h3><a href="{{ url_for('shows.page', show_id=show.id, run=perf.number) }}">Performance {{ perf.number }}</a> <span class="muted small">{{ perf.starts_at|nice_datetime }}</span></h3>
             <p class="muted small">{{ meter.gone|number }} sent of {{ meter.total|number }}{% if meter.trouble %}, {{ meter.trouble }} with trouble{% endif %}</p></li>
         {% endfor %}
       </ul>

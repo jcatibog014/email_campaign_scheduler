@@ -646,6 +646,10 @@ a.chip:hover { border-color: var(--control-border); }
 .key-waiting::before { background: var(--surface-soft); border: 1px solid var(--control-border); }
 .perf-list { list-style: none; padding: 0; margin: .9rem 0 0; display: grid; gap: .9rem; }
 .perf-list h3 { font-size: .95rem; }
+.perf-list li.is-chosen { margin-left: -.75rem; padding: .45rem .75rem; border-radius: var(--radius); background: var(--surface-soft); box-shadow: inset 4px 0 0 var(--gold); }
+.results-scope { margin: -.4rem 0 .8rem; }
+.run-note { display: flex; align-items: flex-start; gap: .5rem; margin: .9rem 0 .6rem; padding: .6rem .8rem; border-radius: var(--radius); background: var(--surface-soft); font-size: .92rem; }
+.run-note svg { flex: 0 0 auto; margin-top: .2rem; color: var(--accent); }
 .dial-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); }
 .dial-grid input { max-width: 8rem; }
 input[type="number"] { max-width: 12rem; }
@@ -687,8 +691,16 @@ input[type="number"] { max-width: 12rem; }
 .board-day-head { margin: 0 0 .2rem; font: inherit; text-align: center; }
 .board-nothing { text-align: center; color: rgb(255 240 220 / .45); font: 700 .78rem/1 var(--font-label); letter-spacing: .1em; text-transform: uppercase; padding-top: .4rem; }
 .board-card { padding-top: .9rem; }
+/* Board cards have a date line above the time, so their red rule sits a line lower. */
+.board-card {
+  background-image:
+    linear-gradient(180deg, transparent 3.05rem, var(--card-margin) 3.05rem, var(--card-margin) 3.15rem, transparent 3.15rem),
+    repeating-linear-gradient(180deg, transparent 0 1.3rem, var(--card-rule) 1.3rem, var(--card-rule) calc(1.3rem + 1px));
+  background-position: 0 0, 0 3.2rem;
+}
 .board-card .cue-card-title { font-size: .92rem; overflow-wrap: anywhere; }
 .board-card .cue-card-time { margin-top: 0; display: flex; align-items: center; gap: .3rem; }
+.board-card .cue-card-date { display: block; font: 700 .72rem/1.3 var(--font-label); letter-spacing: .06em; text-transform: uppercase; color: #6b5a5f; }
 .board-stamp { display: block; margin-top: .5rem; }
 .board-stamp .cue { font-size: .68rem; }
 .board-card.is-done { opacity: .72; filter: saturate(.6); }

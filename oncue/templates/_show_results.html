@@ -1,6 +1,7 @@
 {# What happened after the emails went out: the delivery news, counted once each. #}
 <section class="card" id="results">
   <div class="card-head"><h2>Results</h2><a class="head-link" href="{{ url_for('shows.emails_page', show_id=show.id) }}">Every email &rarr;</a></div>
+  {% if performance_count is defined and performance_count > 1 %}<p class="muted small results-scope">All {{ performance_count }} performances together.</p>{% endif %}
   {% set r = results %}
   <div class="result-grid">
     <div class="result"><p class="stat-label">Sent</p><p class="stat-value">{{ r.sent|number }}</p><p class="stat-note">of {{ r.total|number }}{% if r.dropped %}; {{ r.dropped }} dropped{% endif %}</p></div>
