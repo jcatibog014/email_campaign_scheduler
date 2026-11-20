@@ -41,6 +41,10 @@ def purge(s, moment):
                                                 Workspace.demo_expires_at <= moment)).all()
     if gone:
         s.execute(delete(Workspace).where(Workspace.id.in_(gone)))
+    # A replay job isn't tied to its demo (the live crew must run it while the demo is replaying),
+    # so it doesn't go with the demo: finished ones older than any demo are cleared here.
+    s.execute(delete(Job).where(Job.kind == "demo_history", Job.status.in_((queue.DONE, queue.DEAD, queue.DISCARDED)),
+                                Job.created_at <= moment - DEMO_LIFETIME))
     return len(gone)
 
 
@@ -313,7 +317,14 @@ def stage_unsure_example(s, workspace, moment):
                           "email. Check before you resend it.")
 
 
-@queue.handler("demo_history")
+def _replay_gave_up(s, job, now):
+    """The replay died (its worker kept stopping): let the visitor in anyway, with what was played."""
+    workspace = s.get(Workspace, job.payload.get("workspace_id"))
+    if workspace is not None and workspace.replaying:
+        workspace.replaying = False
+
+
+@queue.handler("demo_history", on_dead=_replay_gave_up)
 def replay_history(s, job, now):
     """Replay a new demo's last six weeks through the real crew, on a fast clock."""
     from . import worker
@@ -358,8 +369,10 @@ def build(s, moment):
     seed_scripts_and_shows(s, workspace, moment)
     add_live_example(s, workspace, moment)
     workspace.replaying = True
+    # The key names THIS demo (its number and start), not just its number: on SQLite a deleted
+    # demo's number could come back, and its old job's key must never stop the new demo's replay.
     queue.enqueue(s, "demo_history", {"workspace_id": workspace.id}, run_at=moment, priority=1,
-                  dedupe_key=f"demo-history:{workspace.id}")
+                  dedupe_key=f"demo-history:{workspace.id}:{moment.isoformat()}")
     return user
 
 

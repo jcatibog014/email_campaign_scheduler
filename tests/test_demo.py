@@ -1,11 +1,11 @@
 """Try Demo: a sandbox per visitor, deleted after 24 hours, that can't touch the owner's."""
 from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 
-from oncue import audience, db, seed, worker
+from oncue import audience, db, queue, seed, worker
 from oncue.dates import utcnow
-from oncue.models import Contact, ContactList, Script, Segment, Show, User, Workspace
+from oncue.models import Contact, ContactList, Job, Script, Segment, Show, User, Workspace
 
 from .conftest import browser, is_logged_in, make_owner, post, text
 
@@ -26,6 +26,38 @@ def test_try_demo_gives_a_sandbox_of_your_own(app):
     page = text(first.get("/stage", follow_redirects=True))
     assert "Teatro Luna" in page and ">Demo<" in page and "practice mail server" in page
     assert is_logged_in(second)
+
+
+def test_an_old_replay_job_never_stops_a_new_demos_replay(app):
+    """A deleted demo's finished replay job is cleared, and a new demo's job key is its own
+    even if it got the same number."""
+    with app.app_context():
+        s = db.session()
+        old = seed.build(s, utcnow() - timedelta(days=3))
+        s.commit()
+        old_workspace = old.workspace_id
+        s.execute(update(Job).where(Job.kind == "demo_history").values(status="dead"))
+        s.commit()
+        assert seed.purge(s, utcnow()) == 1
+        s.commit()
+        assert s.scalar(select(func.count()).select_from(Job).where(Job.kind == "demo_history")) == 0
+        new = seed.build(s, utcnow())
+        s.commit()
+        keys = s.scalars(select(Job.dedupe_key).where(Job.kind == "demo_history")).all()
+        assert len(keys) == 1 and keys[0].startswith(f"demo-history:{new.workspace_id}:")
+        assert new.workspace_id != old_workspace  # numbers are never reused
+
+
+def test_a_replay_that_dies_lets_the_visitor_in(app):
+    with app.app_context():
+        s = db.session()
+        user = seed.build(s, utcnow())
+        s.commit()
+        job = s.scalar(select(Job).where(Job.kind == "demo_history"))
+        job.attempts = job.max_attempts
+        queue.die(s, job, utcnow(), "The worker stopped during the job (its lease ran out).")
+        s.commit()
+        assert s.get(Workspace, user.workspace_id).replaying is False
 
 
 def test_starting_a_demo_wakes_the_crew(app, monkeypatch):
