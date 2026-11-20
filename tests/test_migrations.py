@@ -23,6 +23,20 @@ def test_upgrade_on_an_empty_database_matches_the_models(tmp_path):
     assert {"workspaces", "users", "rate_limits", "alembic_version"} <= tables
 
 
+def test_tables_that_must_never_reuse_a_number_keep_autoincrement(tmp_path):
+    """Batch migrations copy a SQLite table and can lose AUTOINCREMENT. Then a new demo got a
+    deleted demo's number, and the old demo's replay job (same key) stopped the new one's replay."""
+    app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "numbers.sqlite"), "DATABASE_URL": None})
+    with app.app_context():
+        db.upgrade_db()
+        with db.engine().connect() as connection:
+            made = dict(connection.exec_driver_sql("SELECT name, sql FROM sqlite_master WHERE type = 'table'").all())
+    wanted = [table.name for table in Base.metadata.sorted_tables if table.dialect_kwargs.get("sqlite_autoincrement")]
+    assert {"workspaces", "users"} <= set(wanted)
+    for name in wanted:
+        assert "AUTOINCREMENT" in made[name].upper(), name
+
+
 def test_upgrade_db_command(tmp_path):
     app = create_app({"TESTING": True, "DATABASE": str(tmp_path / "cli.sqlite"), "DATABASE_URL": None})
     result = app.test_cli_runner().invoke(args=["upgrade-db"])
