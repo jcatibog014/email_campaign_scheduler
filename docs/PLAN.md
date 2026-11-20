@@ -126,6 +126,7 @@ Menu: **Stage** (home), **Shows**, **Call Board** (schedule calendar), **Audienc
 
 - **Send a Test** came in stage 5 (it needs the mailers), not stage 3.
 - **Console mailer:** not built. The practice mail server does that job, with an inbox in Backstage.
+- **Gmail as a second real mailer** (added after the build): the owner can send from their own Gmail through the Gmail API (`gmail.py`), chosen in Settings instead of Brevo. Not SMTP: Render's free plan blocks the SMTP ports. Gmail gives no delivery or bounce news.
 - **The timer** runs every 30 minutes, not 15: each call wakes the free Neon database. The worker also sleeps until the next due job or show, for the same reason.
 - **The demo's past** is replayed by a background job after the Try Demo click (watched on the Stage), not inside the click: on Render + Neon it takes too long for one request. While it replays, the live crew leaves that workspace alone.
 - **Pacing:** emails waiting for a rate-limit token are spread over the whole backlog, so they don't all come back at the same moment (a thundering herd found while building the replay).

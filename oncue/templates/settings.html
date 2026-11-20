@@ -16,7 +16,7 @@
         {{ field('name', 'Workspace name', posted('name', g.workspace.name), errors.name, attrs='required maxlength="80"') }}
         <div class="form-row">
           {{ field('sender_name', 'From name', posted('sender_name', g.workspace.sender_name), errors.sender_name, hint='What people see as the sender', attrs='required maxlength="80"') }}
-          {{ field('sender_email', 'From address', posted('sender_email', g.workspace.sender_email), errors.sender_email, type='email', hint='For Brevo, an address it has checked', attrs='required') }}
+          {{ field('sender_email', 'From address', posted('sender_email', g.workspace.sender_email), errors.sender_email, type='email', hint='For Brevo, an address it has checked; for Gmail, your Gmail address', attrs='required') }}
         </div>
         {{ field('postal_address', 'Postal address', posted('postal_address', g.workspace.postal_address), errors.postal_address, hint='Shown at the bottom of every email, as anti-spam laws ask', attrs='maxlength="300"') }}
         <label class="field{% if errors.time_zone %} has-error{% endif %}">

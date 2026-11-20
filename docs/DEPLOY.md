@@ -1,6 +1,6 @@
 # Putting Right On Cue Online
 
-Right On Cue runs on **Render** (the website, free), **Neon** (the database, free) and **Brevo** (real emails, free for 300 a day). A **GitHub Actions** timer wakes the site so scheduled shows go out. Do the parts in order.
+Right On Cue runs on **Render** (the website, free) and **Neon** (the database, free). Real emails go through **Brevo** (free for 300 a day, part 4) or **your own Gmail** (about 500 a day, part 4B): set up one of them, or both and choose in Settings. A **GitHub Actions** timer wakes the site so scheduled shows go out. Do the parts in order.
 
 Never paste a password, connection string or API key into a chat. Put them only into Render, GitHub or your own PowerShell window.
 
@@ -21,10 +21,10 @@ Never paste a password, connection string or API key into a chat. Put them only 
 
 1. Go to https://render.com and log in.
 2. **New** > **Blueprint**. Choose the `email_campaign_scheduler` repository. Render reads `render.yaml`.
-3. Render asks for three values:
+3. Render asks for some values:
    - `DATABASE_URL`: paste the Neon connection string.
    - `BASE_URL`: type `https://right-on-cue.onrender.com` (if Render gives the site another name, change it later to the real address).
-   - `BREVO_API_KEY`: leave it empty for now (part 4).
+   - `BREVO_API_KEY`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`: leave them empty for now (parts 4 and 4B).
 4. **Apply**. The first deploy takes a few minutes. Open the site: you see the login page.
 5. If the address is not exactly `https://right-on-cue.onrender.com`: in Render, open the service > **Environment**, set `BASE_URL` to the real address, and save.
 
@@ -56,6 +56,52 @@ When you are done, close the PowerShell window (or run `Remove-Item Env:DATABASE
 
 Mail from Brevo with a Gmail sender may land in spam at first. Ask a friend to mark it "Not spam". Only send to people who agreed to hear from you.
 
+## Part 4B: Real Emails from Your Own Gmail (Instead of, or as Well as, Brevo)
+
+Right On Cue sends as you, from your Gmail, through the **Gmail API**. (The usual way, SMTP with an app password, is blocked on Render's free plan; the Gmail API uses the normal web connection, so it works.) It can only **send** as you: it never reads your mail.
+
+What to know first:
+
+- A personal Gmail sends about **500 emails a day**. Keep **Emails a day** at 400 so you never hit the wall.
+- Gmail **doesn't tell apps about deliveries or bounces**. Emails stay "Sent"; opens and clicks still count (they come from Right On Cue's own picture and links). A bounce comes back as an email in your Gmail inbox: add that address to **Audience** > **Do Not Send** yourself.
+- If you change your Google password, Google signs Right On Cue out: do steps 7 to 9 again.
+
+**A. Make a Google Cloud project (once)**
+
+1. Go to https://console.cloud.google.com and sign in with **the Gmail you will send from**. Accept the terms if asked.
+2. At the top, the project list > **New project**. Name: `right-on-cue`. **Create**, then make sure it is the chosen project at the top.
+3. Menu > **APIs and services** > **Library**. Search **Gmail API**, open it, press **Enable**.
+4. Menu > **APIs and services** > **OAuth consent screen** (it may be called **Google Auth Platform**) > **Get started**:
+   - App name: `Right On Cue`; User support email: your Gmail;
+   - Audience: **External**;
+   - Contact email: your Gmail. Agree, **Create**.
+5. **Audience** (on the left) > **Publish app** > **Confirm**. It should say **In production**. (In "Testing", Google's sign-in stops working after 7 days.) You don't need Google's review: only you sign in.
+6. **Clients** (on the left) > **Create client**: Application type **Desktop app**, name `Right On Cue PC`, **Create**. Keep the window with the **Client ID** and **Client secret** open (or download the JSON file).
+
+**B. Sign in once, from your PC**
+
+In PowerShell, run these **one line at a time**:
+
+```powershell
+cd C:\Users\USER\Documents\Workspace\email_campaign_scheduler
+.venv\Scripts\flask --app oncue gmail-signin
+```
+
+7. It asks for the **Client ID**, then the **Client secret** (the secret doesn't show as you type or paste; press Enter). Your browser opens Google's sign-in:
+   - choose the Gmail to send from;
+   - "**Google hasn't verified this app**": press **Advanced** > **Go to Right On Cue (unsafe)**. It's your own app;
+   - allow "**Send email on your behalf**".
+8. The browser says "Done". The PowerShell window prints a long **refresh token**. It is like a password: don't paste it into a chat.
+
+**C. Put it on the website**
+
+9. In Render: the service > **Environment** > add three variables, then **Save** (the site restarts):
+   - `GMAIL_CLIENT_ID`: the Client ID;
+   - `GMAIL_CLIENT_SECRET`: the Client secret;
+   - `GMAIL_REFRESH_TOKEN`: the refresh token from step 8.
+10. On the website: **Settings** > **Workspace**: set **From address** to your Gmail address. Then **Settings** > **Sending**: choose **Gmail (real email)**, set **Emails a second** to 1 and **Emails a day** to 400, and save.
+11. Send yourself a test: open a show and use **Send a Test** with your own address. It also appears in your Gmail's **Sent** folder.
+
 ## Part 5: The Timer (GitHub Actions)
 
 1. In Render, the service > **Environment**: copy the value of `TICK_KEY`.
@@ -76,4 +122,7 @@ Mail from Brevo with a Gmail sender may land in spam at first. Ask a friend to m
 - **"password authentication failed"**: the Neon password changed. Copy a fresh connection string into `DATABASE_URL`.
 - **Emails stay "Missed Cue" with "Brevo refused the API key"**: check `BREVO_API_KEY`. After 10 failures in a row the Safety Curtain comes down; once the key is right, press **Raise the curtain** in Backstage.
 - **No opens or clicks from Brevo**: check the webhook address (part 4, step 5) ends with the exact `BREVO_WEBHOOK_SECRET`.
+- **Gmail is greyed out in Settings**: one of `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` is missing in Render (part 4B, step 9).
+- **Emails stay "Missed Cue" with "Google refused the Gmail sign-in (invalid_grant)"**: the sign-in ran out (a new Google password, the app still in "Testing", or access removed in your Google account). Do part 4B steps 5, 7 to 9 again, then press **Raise the curtain** in Backstage if it came down.
+- **"Gmail says too many"**: you reached Gmail's limit for the day. The rest waits and goes out later by itself; lower **Emails a day**.
 - Lines about IPv6 "Network is unreachable" in Neon's log are harmless.

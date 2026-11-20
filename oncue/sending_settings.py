@@ -31,11 +31,15 @@ def save_sending(s, workspace, form):
         errors["send_rate"] = f"Use a number from {RATE_MIN:g} to {RATE_MAX:g}."
     if cap is None or not 1 <= cap <= CAP_MAX:
         errors["daily_cap"] = f"Use a whole number from 1 to {CAP_MAX:,}."
-    if mailer not in (mailers.PRACTICE, mailers.BREVO):
+    if mailer not in mailers.LABELS:
         errors["mailer"] = "Choose a mailer."
-    elif mailer == mailers.BREVO and (workspace.is_demo or not current_app.config.get("BREVO_API_KEY")):
-        errors["mailer"] = ("The demo only sends to the practice mail server." if workspace.is_demo
-                            else "Set BREVO_API_KEY on the server first (docs/DEPLOY.md).")
+    elif mailer != mailers.PRACTICE and workspace.is_demo:
+        errors["mailer"] = "The demo only sends to the practice mail server."
+    elif mailer == mailers.BREVO and not mailers.ready(current_app.config, mailer):
+        errors["mailer"] = "Set BREVO_API_KEY on the server first (docs/DEPLOY.md, part 4)."
+    elif mailer == mailers.GMAIL and not mailers.ready(current_app.config, mailer):
+        errors["mailer"] = ("Set GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET and GMAIL_REFRESH_TOKEN on the server first "
+                            "(docs/DEPLOY.md, part 4B).")
     if errors:
         return errors, None
     workspace.send_rate, workspace.daily_cap, workspace.mailer = rate, cap, mailer
@@ -86,7 +90,11 @@ def page_data(s, workspace):
                      .order_by(DomainLimit.domain)).all()
     return {"settings_sections": ["_settings_sending.html"],
             "domain_text": "\n".join(f"{row.domain} {row.per_minute}" for row in rows),
-            "brevo_ready": bool(current_app.config.get("BREVO_API_KEY")) and not workspace.is_demo,
+            "brevo_ready": mailers.ready(current_app.config, mailers.BREVO) and not workspace.is_demo,
+            "gmail_ready": mailers.ready(current_app.config, mailers.GMAIL) and not workspace.is_demo,
+            # The mailer that is really in use: a choice whose settings are gone falls back to practice.
+            "mailer_in_use": (workspace.mailer if not workspace.is_demo
+                              and mailers.ready(current_app.config, workspace.mailer) else mailers.PRACTICE),
             "mailer_labels": mailers.LABELS}
 
 
