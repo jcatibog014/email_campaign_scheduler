@@ -49,3 +49,11 @@ services:
       # sends to the practice mail server too.
       - key: BREVO_API_KEY
         sync: false
+      # Or the owner's own Gmail, through the Gmail API (docs/DEPLOY.md, part 4B):
+      # a Google Cloud client and the refresh token `flask gmail-signin` prints.
+      - key: GMAIL_CLIENT_ID
+        sync: false
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false

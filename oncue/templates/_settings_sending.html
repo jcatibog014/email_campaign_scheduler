@@ -7,10 +7,12 @@
     {{ csrf() }}<input type="hidden" name="action" value="sending"><input type="hidden" name="anchor" value="sending">
     <fieldset class="choices{% if errors.mailer %} has-error{% endif %}">
       <legend>Mailer</legend>
-      <label class="check"><input type="radio" name="mailer" value="practice"{% if g.workspace.mailer != 'brevo' or not brevo_ready %} checked{% endif %}>
+      <label class="check"><input type="radio" name="mailer" value="practice"{% if mailer_in_use == 'practice' %} checked{% endif %}>
         <span>{{ mailer_labels.practice }}<br><span class="muted small">Nothing reaches a real inbox. Its inbox is in Backstage.</span></span></label>
-      <label class="check"><input type="radio" name="mailer" value="brevo"{% if g.workspace.mailer == 'brevo' and brevo_ready %} checked{% endif %}{% if not brevo_ready %} disabled{% endif %}>
-        <span>{{ mailer_labels.brevo }} <span class="live-tag">Live: sends real emails</span><br><span class="muted small">{% if g.workspace.is_demo %}Not in the demo.{% elif brevo_ready %}Real inboxes. Free plan: 300 a day.{% else %}Set BREVO_API_KEY on the server first.{% endif %}</span></span></label>
+      <label class="check"><input type="radio" name="mailer" value="brevo"{% if mailer_in_use == 'brevo' %} checked{% endif %}{% if not brevo_ready %} disabled{% endif %}>
+        <span>{{ mailer_labels.brevo }} <span class="live-tag">Live: sends real emails</span><br><span class="muted small">{% if g.workspace.is_demo %}Not in the demo.{% elif brevo_ready %}Real inboxes. Free plan: 300 a day. Tells us about deliveries and bounces.{% else %}Set BREVO_API_KEY on the server first.{% endif %}</span></span></label>
+      <label class="check"><input type="radio" name="mailer" value="gmail"{% if mailer_in_use == 'gmail' %} checked{% endif %}{% if not gmail_ready %} disabled{% endif %}>
+        <span>{{ mailer_labels.gmail }} <span class="live-tag">Live: sends real emails</span><br><span class="muted small">{% if g.workspace.is_demo %}Not in the demo.{% elif gmail_ready %}From your own Gmail. About 500 a day: keep Emails a day at 400 and Emails a second at 1. Gmail doesn't report deliveries or bounces; opens and clicks still count.{% else %}Sign in to Gmail first (docs/DEPLOY.md, part 4B).{% endif %}</span></span></label>
     </fieldset>
     {% if errors.mailer %}<p class="field-error">{{ errors.mailer }}</p>{% endif %}
     <div class="form-row">

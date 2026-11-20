@@ -12,7 +12,7 @@
         {% if message.attempts > 1 or message.status == 'missed_cue' %}
           <li class="is-retry"><span class="when">{{ message.attempts }} {{ 'try' if message.attempts == 1 else 'tries' }}</span> {{ message.last_error or 'Retried after "try later" answers.' }}{% if message.next_try_at %} Next try {{ message.next_try_at|nice_datetime }}.{% endif %}</li>
         {% endif %}
-        {% if message.sent_at %}<li><span class="when">{{ message.sent_at|nice_datetime }}</span> {{ labels.sent }}{% if message.mailer %} ({{ 'the practice mail server' if message.mailer == 'practice' else 'Brevo' }}){% endif %}</li>{% endif %}
+        {% if message.sent_at %}<li><span class="when">{{ message.sent_at|nice_datetime }}</span> {{ labels.sent }}{% if message.mailer %} ({{ mailer_names.get(message.mailer, message.mailer) }}){% endif %}</li>{% endif %}
         {% for event in events %}
           <li class="event-{{ event.kind }}"><span class="when">{{ event.occurred_at|nice_datetime }}</span> {{ labels.get(event.kind, event.kind) }}{% if event.detail %} <span class="muted">&middot; {{ event.detail }}</span>{% endif %}
             <span class="muted small">(from {{ {'brevo': 'Brevo', 'practice': 'the practice server', 'pixel': 'our open pixel', 'click': 'our click link', 'page': 'the unsubscribe page'}.get(event.source, event.source) }})</span></li>

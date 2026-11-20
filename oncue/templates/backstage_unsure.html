@@ -4,7 +4,7 @@
 {% block content %}
   {{ page_head('Backstage') }}
   {% include "_backstage_tabs.html" %}
-  <p class="muted bottom-gap">The mail service didn't answer (or a worker stopped mid-send), and it can't tell us whether it took the email. We don't resend by ourselves: a missing email is better than a double one. Check (ask the person, or look in Brevo's logs), then choose.</p>
+  <p class="muted bottom-gap">The mail service didn't answer (or a worker stopped mid-send), and it can't tell us whether it took the email. We don't resend by ourselves: a missing email is better than a double one. Check (ask the person, or look in Brevo's logs or your Gmail's Sent folder), then choose.</p>
   {% if rows %}
     <ul class="plain-list card dead-list">
       {% for message, show in rows %}

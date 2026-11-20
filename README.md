@@ -100,7 +100,7 @@ The job console. See the workers (the crew) and their heartbeats, the queue, ema
 
 ### Settings
 
-Who emails come from, the time zone, how fast to send, how many a day, limits per receiving domain (like gmail.com), quiet hours at night, how difficult the practice mail server is, and light or dark mode.
+Who emails come from, which mail service carries them (the practice mail server, Brevo, or your own Gmail), the time zone, how fast to send, how many a day, limits per receiving domain (like gmail.com), quiet hours at night, how difficult the practice mail server is, and light or dark mode.
 
 ![Settings](docs/screenshots/settings.png)
 
@@ -119,7 +119,7 @@ Right On Cue works on a phone, and you can add it to your home screen like an ap
 | **Retry with backoff** | When the mail service says "try later", the email waits a little longer each time (30 seconds, 1 minute, 2 minutes... at most 1 hour), with some randomness, up to 6 tries. |
 | **Dead letter** | A job that failed every try. A person decides: retry or discard. |
 | **Idempotency** | Each send has a key. If a worker stops in the middle, the retry uses the same key, so the person never gets the email twice. |
-| **Rate limit** | A token bucket: at most a few emails a second, at most 300 a day (Brevo's free plan), and limits per domain. Waiting for a token never counts as a failed try. |
+| **Rate limit** | A token bucket: at most a few emails a second, at most 300 a day (Brevo's free plan; about 500 for Gmail), and limits per domain. Waiting for a token never counts as a failed try. |
 | **Safety Curtain** | After 10 failures in a row, sending stops for 5 minutes, then one test email decides. |
 | **Scheduler** | It starts each show at its time, in each person's own time zone, and not in quiet hours. |
 
@@ -134,10 +134,11 @@ Right On Cue works on a phone, and you can add it to your home screen like an ap
 | SQLite | A small database in one file | The database on my computer and in tests |
 | PostgreSQL (Neon) | A big database in the cloud | The database of the live site |
 | markdown-it-py and nh3 | Markdown and HTML tools | Turn a script into a safe email |
-| Brevo | An email service | Sends the owner's real emails |
+| Brevo | An email service | Sends the owner's real emails (one choice) |
+| Gmail API | Google's way for apps to send from a Gmail | Sends the owner's real emails from their own Gmail (the other choice) |
 | Render | A hosting service | Runs the live website |
 | GitHub Actions | A timer in the cloud | Wakes the site so shows go out on time |
-| pytest | A testing tool | More than 175 tests |
+| pytest | A testing tool | More than 190 tests |
 | Playwright | A browser robot | Takes the screenshots |
 | HTML, CSS and JavaScript | The languages of web pages | The look (all drawn with CSS, no pictures) and the live updates |
 

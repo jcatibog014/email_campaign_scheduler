@@ -76,6 +76,11 @@ def create_app(test_config=None):
         BREVO_API_KEY=os.environ.get("BREVO_API_KEY"),
         # The secret part of the address Brevo posts delivery news to (hooks.py).
         BREVO_WEBHOOK_SECRET=os.environ.get("BREVO_WEBHOOK_SECRET"),
+        # Gmail (gmail.py): the owner's real sending from their own Gmail, through the Gmail API.
+        # The client comes from Google Cloud; the refresh token from `flask gmail-signin`.
+        GMAIL_CLIENT_ID=os.environ.get("GMAIL_CLIENT_ID"),
+        GMAIL_CLIENT_SECRET=os.environ.get("GMAIL_CLIENT_SECRET"),
+        GMAIL_REFRESH_TOKEN=os.environ.get("GMAIL_REFRESH_TOKEN"),
         # The secret the GitHub Actions timer sends to POST /tasks/tick (tick.py).
         TICK_KEY=os.environ.get("TICK_KEY"),
         # A worker thread inside the web app (worker.py). Locally you can turn it
@@ -101,6 +106,7 @@ def create_app(test_config=None):
         raise RuntimeError("Set the DATABASE_URL environment variable on Render (Neon's connection string).")
 
     from . import auth, buckets, cues, hooks, sending_settings, smart, tracking, db, formatting, scheduler, seed, sending, tick, worker  # noqa: F401 (scheduler registers its jobs)
+    from . import gmail, mailers
     from .views import audience as audience_views
     from .views import demo, public, settings, stage
     from .views import backstage, callboard, reviews as review_views
@@ -126,6 +132,7 @@ def create_app(test_config=None):
         stage.panels.append(("backstage", backstage.stage_banner))
     tick.init_app(app)
     worker.init_app(app)
+    gmail.init_app(app)
     if worker.nudge not in show_views.nudges:
         show_views.nudges.append(worker.nudge)
     # auth comes first: its before_request (load_user) must run before the others'.
@@ -135,7 +142,7 @@ def create_app(test_config=None):
                       review_views.bp, backstage.bp):
         app.register_blueprint(blueprint)
 
-    app.jinja_env.globals.update(APP_NAME=APP_NAME, TAGLINE=TAGLINE,
+    app.jinja_env.globals.update(APP_NAME=APP_NAME, TAGLINE=TAGLINE, mailer_names=mailers.SHORT_NAMES,
                                  has_page=lambda endpoint: endpoint in app.view_functions)
 
     @app.get("/healthz")
